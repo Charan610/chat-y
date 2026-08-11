@@ -111,7 +111,7 @@ export function TopNav() {
         </button>
 
         {/* Title */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
           {editingTitle ? (
             <input
               ref={titleRef}
@@ -127,12 +127,12 @@ export function TopNav() {
                 border: '1px solid var(--accent-bd)',
                 borderRadius: 4,
                 color: 'var(--fg)',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 500,
-                padding: '2px 8px',
+                padding: '2px 6px',
                 outline: 'none',
                 fontFamily: 'var(--font-sans)',
-                maxWidth: 320,
+                maxWidth: 160,
               }}
             />
           ) : (
@@ -142,7 +142,7 @@ export function TopNav() {
                 background: 'none',
                 border: 'none',
                 color: activeConv ? 'var(--fg)' : 'var(--fg-4)',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 500,
                 cursor: activeConv ? 'text' : 'default',
                 padding: '2px 4px',
@@ -150,7 +150,7 @@ export function TopNav() {
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                maxWidth: 300,
+                maxWidth: 140,
                 textAlign: 'left',
                 fontFamily: 'var(--font-sans)',
                 transition: 'background 120ms',
@@ -162,10 +162,10 @@ export function TopNav() {
             </button>
           )}
 
-          {/* Model badge */}
+          {/* Model badge (desktop only) */}
           {badge && (
             <span
-              className="hidden sm:inline-block"
+              className="hidden md:inline-block"
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: 10,
@@ -183,7 +183,7 @@ export function TopNav() {
         </div>
 
         {/* Right Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           {/* Web Search Toggle */}
           <button
             id="web-search-toggle"
@@ -192,32 +192,31 @@ export function TopNav() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
-              padding: '4px 8px',
+              gap: 4,
+              padding: '3px 6px',
               borderRadius: 5,
               border: `1px solid ${webSearchEnabled ? 'var(--accent-bd)' : 'var(--line-2)'}`,
               background: webSearchEnabled ? 'var(--accent-bg)' : 'none',
               color: webSearchEnabled ? 'var(--accent)' : 'var(--fg-4)',
               cursor: 'pointer',
-              fontSize: 12,
+              fontSize: 11,
               fontFamily: 'var(--font-mono)',
               transition: 'all 120ms',
             }}
           >
             <Globe size={13} />
-            {webSearchEnabled && <span>WEB</span>}
+            {webSearchEnabled && <span className="hidden sm:inline">WEB</span>}
           </button>
 
           {/* Model Selector */}
           <button
             id="model-selector-btn"
             onClick={() => setShowModelPicker(true)}
-            className="max-w-[110px] sm:max-w-[200px]"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '4px 8px',
+              gap: 4,
+              padding: '3px 6px',
               borderRadius: 5,
               border: '1px solid var(--line-2)',
               background: 'var(--elevated)',
@@ -226,6 +225,7 @@ export function TopNav() {
               fontSize: 11,
               fontFamily: 'var(--font-mono)',
               transition: 'all 120ms',
+              maxWidth: 105,
             }}
             onMouseEnter={e => {
               e.currentTarget.style.borderColor = 'var(--line-3)';
@@ -239,12 +239,13 @@ export function TopNav() {
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {getModelDisplay(activeModel)}
             </span>
-            <ChevronDown size={12} style={{ flexShrink: 0 }} />
+            <ChevronDown size={11} style={{ flexShrink: 0 }} />
           </button>
 
-          {/* Settings */}
+          {/* Settings (desktop only) */}
           <button
             onClick={() => dispatch({ type: 'SET_SETTINGS_OPEN', payload: true })}
+            className="hidden md:flex"
             style={{
               background: 'none',
               border: 'none',
@@ -252,7 +253,6 @@ export function TopNav() {
               cursor: 'pointer',
               padding: 4,
               borderRadius: 4,
-              display: 'flex',
               transition: 'color 120ms',
             }}
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--fg)')}

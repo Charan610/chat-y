@@ -194,11 +194,14 @@ export function Sidebar() {
       )}
 
       <motion.aside
-        animate={{ width: SidebarWidth }}
+        animate={{
+          width: isMobile ? (sidebarOpen ? 280 : 0) : (sidebarOpen ? 240 : 56),
+          x: isMobile && !sidebarOpen ? -280 : 0,
+        }}
         transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
         style={{
           background: 'var(--surface)',
-          borderRight: SidebarWidth > 0 ? '1px solid var(--line)' : 'none',
+          borderRight: '1px solid var(--line)',
           display: 'flex',
           flexDirection: 'column',
           height: '100vh',
