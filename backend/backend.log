@@ -200,3 +200,13 @@ INFO:     127.0.0.1:50726 - "GET /api/memories HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50735 - "GET /api/providers HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50731 - "GET /api/apikeys HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50733 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50780 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50781 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50773 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50779 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50778 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50772 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50784 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50793 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50789 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50792 - "GET /api/models HTTP/1.1" 200 OK
