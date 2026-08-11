@@ -165,6 +165,7 @@ export function TopNav() {
           {/* Model badge */}
           {badge && (
             <span
+              className="hidden sm:inline-block"
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: 10,
@@ -211,20 +212,20 @@ export function TopNav() {
           <button
             id="model-selector-btn"
             onClick={() => setShowModelPicker(true)}
+            className="max-w-[110px] sm:max-w-[200px]"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: '4px 10px',
+              padding: '4px 8px',
               borderRadius: 5,
               border: '1px solid var(--line-2)',
               background: 'var(--elevated)',
               color: 'var(--fg-2)',
               cursor: 'pointer',
-              fontSize: 12,
+              fontSize: 11,
               fontFamily: 'var(--font-mono)',
               transition: 'all 120ms',
-              maxWidth: 200,
             }}
             onMouseEnter={e => {
               e.currentTarget.style.borderColor = 'var(--line-3)';

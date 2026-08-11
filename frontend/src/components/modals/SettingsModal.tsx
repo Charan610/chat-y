@@ -277,13 +277,13 @@ export function SettingsModal() {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px] p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px] p-2 sm:p-4">
       {/* Modal Box */}
-      <div className="w-full max-w-[850px] h-[600px] bg-surface border border-line rounded-lg shadow-2xl flex overflow-hidden animate-[fadeIn_150ms_ease]">
+      <div className="w-full max-w-[850px] h-full max-h-[92vh] sm:h-[600px] bg-surface border border-line rounded-lg shadow-2xl flex flex-col sm:flex-row overflow-hidden animate-[fadeIn_150ms_ease]">
         
-        {/* Left Settings Rail */}
-        <div className="w-[180px] bg-surface border-r border-line flex flex-col p-2.5 gap-1.5 flex-shrink-0">
-          <div className="px-2.5 py-1.5 font-mono text-[9px] tracking-[1.5px] uppercase text-fg-4">WORKSPACE SETTINGS</div>
+        {/* Settings Rail (Horizontal scroll on mobile, Vertical list on desktop) */}
+        <div className="w-full sm:w-[180px] bg-surface border-b sm:border-b-0 sm:border-r border-line flex flex-row sm:flex-col p-2 sm:p-2.5 gap-1 sm:gap-1.5 flex-shrink-0 overflow-x-auto sm:overflow-x-visible">
+          <div className="hidden sm:block px-2.5 py-1.5 font-mono text-[9px] tracking-[1.5px] uppercase text-fg-4">WORKSPACE SETTINGS</div>
           
           <button
             onClick={() => setTab('general')}
@@ -345,10 +345,10 @@ export function SettingsModal() {
             Know Your LLM
           </button>
 
-          <div className="mt-auto border-t border-line pt-2.5">
+          <div className="sm:mt-auto sm:border-t border-line sm:pt-2.5 flex items-center">
             <button
               onClick={() => setTab('about')}
-              className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md w-full text-left text-xs transition-colors cursor-pointer ${
+              className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md w-full text-left text-xs transition-colors cursor-pointer whitespace-nowrap ${
                 activeSubTab === 'about' ? 'bg-accent-bg text-accent font-medium' : 'text-fg-2 hover:bg-hover hover:text-fg'
               }`}
             >

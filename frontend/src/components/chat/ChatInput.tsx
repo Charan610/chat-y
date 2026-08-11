@@ -97,12 +97,7 @@ export function ChatInput({
 
   return (
     <div
-      style={{
-        borderTop: '1px solid var(--line)',
-        background: 'var(--surface)',
-        padding: '12px 16px 16px',
-        flexShrink: 0,
-      }}
+      className="border-t border-line bg-surface p-2 sm:p-3 flex-shrink-0 w-full"
     >
       {/* Pending files */}
       {pendingFiles.length > 0 && (

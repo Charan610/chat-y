@@ -39,16 +39,7 @@ export function WelcomeScreen() {
 
   return (
     <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        padding: '40px 24px',
-        gap: 32,
-        overflow: 'auto',
-      }}
+      className="flex flex-col items-center justify-center h-full p-4 sm:p-8 gap-6 sm:gap-8 overflow-auto w-full"
     >
       {/* Hero */}
       <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>

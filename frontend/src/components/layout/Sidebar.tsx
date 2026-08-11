@@ -139,9 +139,20 @@ function ConvContextMenu({
 
 export function Sidebar() {
   const { state, dispatch, setActiveConversation, newConversation } = useApp();
-  const { conversations, activeConversationId, sidebarOpen, settingsOpen } = state;
+  const { conversations, activeConversationId, sidebarOpen } = state;
   const [search, setSearch] = useState('');
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const filtered = conversations
     .filter(c => !c.is_archived)
@@ -156,23 +167,48 @@ export function Sidebar() {
     setContextMenu({ id, x: e.clientX, y: e.clientY });
   };
 
-  const SidebarWidth = sidebarOpen ? 240 : 56;
+  const handleSelectConv = (id: string) => {
+    setActiveConversation(id);
+    if (isMobile) {
+      dispatch({ type: 'SET_SIDEBAR', payload: false });
+    }
+  };
+
+  const handleNewChat = (prompt?: string) => {
+    newConversation(prompt);
+    if (isMobile) {
+      dispatch({ type: 'SET_SIDEBAR', payload: false });
+    }
+  };
+
+  const SidebarWidth = isMobile ? (sidebarOpen ? 280 : 0) : (sidebarOpen ? 240 : 56);
 
   return (
     <>
+      {/* Mobile Backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => dispatch({ type: 'SET_SIDEBAR', payload: false })}
+          className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-40 animate-[fadeIn_150ms_ease]"
+        />
+      )}
+
       <motion.aside
         animate={{ width: SidebarWidth }}
         transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
         style={{
           background: 'var(--surface)',
-          borderRight: '1px solid var(--line)',
+          borderRight: SidebarWidth > 0 ? '1px solid var(--line)' : 'none',
           display: 'flex',
           flexDirection: 'column',
           height: '100vh',
           overflow: 'hidden',
           flexShrink: 0,
-          position: 'relative',
-          zIndex: 10,
+          position: isMobile ? 'fixed' : 'relative',
+          left: 0,
+          top: 0,
+          zIndex: isMobile ? 50 : 10,
+          boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none',
         }}
       >
         {/* Logo */}
@@ -234,7 +270,7 @@ export function Sidebar() {
         {/* New Chat */}
         <div style={{ padding: sidebarOpen ? '10px 8px 6px' : '10px 4px 6px' }}>
           <button
-            onClick={() => newConversation()}
+            onClick={() => handleNewChat()}
             style={{
               width: '100%',
               display: 'flex',
@@ -320,7 +356,7 @@ export function Sidebar() {
                   conv={conv}
                   active={conv.id === activeConversationId}
                   collapsed={!sidebarOpen}
-                  onClick={() => setActiveConversation(conv.id)}
+                  onClick={() => handleSelectConv(conv.id)}
                   onContextMenu={e => handleContextMenu(e, conv.id)}
                 />
               ))}
@@ -341,7 +377,7 @@ export function Sidebar() {
                   conv={conv}
                   active={conv.id === activeConversationId}
                   collapsed={!sidebarOpen}
-                  onClick={() => setActiveConversation(conv.id)}
+                  onClick={() => handleSelectConv(conv.id)}
                   onContextMenu={e => handleContextMenu(e, conv.id)}
                 />
               ))}
