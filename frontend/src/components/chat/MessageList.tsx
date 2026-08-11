@@ -56,8 +56,10 @@ export function MessageList() {
 
   // Auto-scroll on new messages or streaming
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, streamingContent]);
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: isStreaming ? 'auto' : 'smooth', block: 'end' });
+    }
+  }, [messages.length, streamingContent, isStreaming]);
 
   if (isLoadingMessages) return <LoadingSkeleton />;
 

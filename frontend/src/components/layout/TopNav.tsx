@@ -242,10 +242,11 @@ export function TopNav() {
             <ChevronDown size={11} style={{ flexShrink: 0 }} />
           </button>
 
-          {/* Settings (desktop only) */}
+          {/* Settings button (always visible) */}
           <button
             onClick={() => dispatch({ type: 'SET_SETTINGS_OPEN', payload: true })}
-            className="hidden md:flex"
+            className="flex"
+            title="Workspace Settings"
             style={{
               background: 'none',
               border: 'none',
