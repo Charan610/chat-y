@@ -94,6 +94,15 @@ export function WelcomeScreen() {
             Your AI Workspace
           </p>
         </div>
+
+        {/* Prominent Start New Chat Button */}
+        <button
+          onClick={() => newConversation()}
+          className="btn btn-primary px-6 py-2.5 text-xs sm:text-sm font-semibold rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2 mt-1 cursor-pointer bg-accent text-white border border-accent/40"
+        >
+          <Zap className="w-4 h-4 text-white animate-pulse" />
+          <span>+ Start New Chat</span>
+        </button>
       </div>
 
       {/* Quick Prompts */}
