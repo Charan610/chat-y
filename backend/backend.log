@@ -1,0 +1,150 @@
+/Users/charan/CHAT-Y/backend/.venv/lib/python3.11/site-packages/pydantic/_internal/_fields.py:161: UserWarning: Field "model_id" has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+/Users/charan/CHAT-Y/backend/.venv/lib/python3.11/site-packages/pydantic/_internal/_fields.py:161: UserWarning: Field "model_stats" has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+/Users/charan/CHAT-Y/backend/.venv/lib/python3.11/site-packages/pydantic/_internal/_fields.py:161: UserWarning: Field "model_used" has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+INFO:     Started server process [1183]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+✓ Chat-Y backend started
+  Upload dir : ./uploads
+  Chroma path: ./chroma_db
+INFO:     127.0.0.1:49232 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49230 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49225 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49224 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49231 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49236 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49233 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49245 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49243 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49242 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49248 - "GET /api/analytics/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49488 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49489 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49486 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49482 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49480 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49487 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49492 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49497 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49500 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49501 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49744 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49747 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49743 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49742 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49741 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49755 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49758 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49759 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49757 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49843 - "GET /api/analytics/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50194 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50196 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50192 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50193 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50190 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50191 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50204 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50203 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50207 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50232 - "POST /api/chat/stream HTTP/1.1" 200 OK
+LLM stream error: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=webllm/Llama-3.2-1B-Instruct-q4f16_1-MLC
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+INFO:     127.0.0.1:50241 - "POST /api/chat/stream HTTP/1.1" 200 OK
+LLM stream error: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=webllm/Llama-3.2-1B-Instruct-q4f16_1-MLC
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+INFO:     127.0.0.1:50246 - "POST /api/chat/stream HTTP/1.1" 200 OK
+LLM stream error: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=webllm/Qwen2.5-1.5B-Instruct-q4f16_1-MLC
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <Connection(Thread-41, started daemon 6269661184)>>, which will be dropped, as it cannot be safely terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+/Users/charan/CHAT-Y/backend/app/database.py:14: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <Connection(Thread-41, started daemon 6269661184)>>, which will be dropped, as it cannot be safely terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+  async with async_session_maker() as session:
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+INFO:     127.0.0.1:50273 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50271 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50270 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50269 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50268 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50287 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50286 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50285 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50284 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50289 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50373 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50371 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50370 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50369 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50372 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50382 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50384 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50383 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50387 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50388 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50444 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50443 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50441 - "GET /api/conversations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50442 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50445 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50454 - "GET /api/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50458 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50460 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50457 - "GET /api/apikeys HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50455 - "GET /api/conversations HTTP/1.1" 200 OK
