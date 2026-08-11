@@ -85,7 +85,7 @@ const initialState: AppState = {
   chatMode: 'local',
   webllmStatus: 'idle',
   webllmProgress: { phase: 'idle', progress: 0, text: '' },
-  webllmModelId: 'SmolLM2-360M-Instruct-q4f16_1-MLC',
+  webllmModelId: 'SmolLM-360M-Instruct-q4f16_1-MLC',
 };
 
 // ── Actions ───────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import * as webllm from '@mlc-ai/web-llm';
 // ── Available local models (small, fast, quantized) ──────────────────────────
 export const LOCAL_MODELS = [
   {
-    id: 'SmolLM2-360M-Instruct-q4f16_1-MLC',
+    id: 'SmolLM-360M-Instruct-q4f16_1-MLC',
     name: 'SmolLM2 360M (Ultra-Light)',
     size: '~250 MB',
     description: 'Tiny model, fast on most GPUs. Good for simple tasks.',

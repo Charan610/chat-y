@@ -15,7 +15,7 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
 
   // Local WebLLM models
   const webllmModels = [
-    { name: 'SmolLM2 360M', provider: 'webllm', model_id: 'SmolLM2-360M-Instruct-q4f16_1-MLC', description: '✦ In-Browser Local Model (~250 MB). Zero data sent to servers.' },
+    { name: 'SmolLM2 360M', provider: 'webllm', model_id: 'SmolLM-360M-Instruct-q4f16_1-MLC', description: '✦ In-Browser Local Model (~250 MB). Zero data sent to servers.' },
     { name: 'Llama 3.2 1B Instruct', provider: 'webllm', model_id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC', description: '✦ In-Browser Local Model (~700 MB). Meta reasoning on device.' },
     { name: 'Qwen 2.5 1.5B Instruct', provider: 'webllm', model_id: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', description: '✦ In-Browser Local Model (~1 GB). Strong local code & reasoning.' },
   ];

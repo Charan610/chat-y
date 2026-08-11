@@ -471,7 +471,7 @@ export function SettingsModal() {
                   </div>
                   <div className="flex flex-col gap-2">
                     {[
-                      { id: 'SmolLM2-360M-Instruct-q4f16_1-MLC', name: 'SmolLM2 360M', size: '~250 MB', tag: 'FASTEST' },
+                      { id: 'SmolLM-360M-Instruct-q4f16_1-MLC', name: 'SmolLM2 360M', size: '~250 MB', tag: 'FASTEST' },
                       { id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC', name: 'Llama 3.2 1B Instruct', size: '~700 MB', tag: 'BALANCED' },
                       { id: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', name: 'Qwen 2.5 1.5B Instruct', size: '~1 GB', tag: 'SMARTEST' },
                     ].map((m) => {
@@ -1070,7 +1070,7 @@ export function SettingsModal() {
                   <div className="flex flex-col gap-1.5">
                     {/* SmolLM2 360M */}
                     {(() => {
-                      const modelId = 'SmolLM2-360M-Instruct-q4f16_1-MLC';
+                      const modelId = 'SmolLM-360M-Instruct-q4f16_1-MLC';
                       const isActive = state.webllmStatus === 'ready' && state.webllmModelId === modelId;
                       const isLoading = state.webllmStatus === 'loading' && state.webllmModelId === modelId;
                       return (
