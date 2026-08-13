@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { Globe } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { MessageItem } from './MessageItem';
 import { format } from 'date-fns';
@@ -53,7 +54,7 @@ function LoadingSkeleton() {
 
 export function MessageList() {
   const { state } = useApp();
-  const { messages, isStreaming, streamingContent, streamingMessageId, isLoadingMessages } = state;
+  const { messages, isStreaming, streamingContent, streamingMessageId, isLoadingMessages, webSearchEnabled } = state;
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +105,16 @@ export function MessageList() {
           ))}
         </div>
       ))}
+
+      {/* Web Search indicator */}
+      {isStreaming && webSearchEnabled && !streamingContent && (
+        <div className="chat-column my-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent-bg border border-accent-bd text-accent text-xs font-mono animate-pulse">
+            <Globe size={13} className="animate-spin" />
+            <span>Searching the web for current information...</span>
+          </div>
+        </div>
+      )}
 
       {/* Streaming message */}
       {isStreaming && (

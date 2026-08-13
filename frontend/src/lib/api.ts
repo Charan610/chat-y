@@ -64,15 +64,52 @@ export async function deleteConversation(id: string): Promise<void> {
   return apiClient.delete<void>(`/api/conversations/${id}`);
 }
 
-// ── Messages ─────────────────────────────────────────────────────────────────
 export async function fetchMessages(conversationId: string): Promise<Message[]> {
   return apiClient.get<Message[]>(`/api/conversations/${conversationId}/messages`);
+}
+
+// ── Web Search ───────────────────────────────────────────────────────────────
+export async function fetchWebSearch(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
+    if (res && res.ok) {
+      return await res.json();
+    }
+    const ddgRes = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { mode: 'cors' }).catch(() => null);
+    if (!ddgRes || !ddgRes.ok) return [];
+    const html = await ddgRes.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const results: Array<{ title: string; url: string; snippet: string }> = [];
+    const nodes = doc.querySelectorAll('.result');
+    nodes.forEach((node, i) => {
+      if (i >= 5) return;
+      const a = node.querySelector('.result__a') as HTMLAnchorElement | null;
+      const s = node.querySelector('.result__snippet');
+      if (!a) return;
+      let url = a.href || '';
+      if (url.includes('uddg=')) {
+        try {
+          const u = new URL(url);
+          url = u.searchParams.get('uddg') || url;
+        } catch {}
+      }
+      results.push({
+        title: a.textContent?.trim() || '',
+        url: url,
+        snippet: s?.textContent?.trim() || '',
+      });
+    });
+    return results;
+  } catch {
+    return [];
+  }
 }
 
 export async function streamDirectCloud(
   req: ChatRequest,
   onChunk: (text: string) => void,
-  onMetadata: (data: Partial<StreamChunk>) => void,
+  onMetadata: (data: any) => void,
   onDone: (conversationId: string) => void,
   onError: (error: string) => void,
   signal?: AbortSignal
@@ -151,9 +188,26 @@ export async function streamDirectCloud(
       conversation_id: convId,
     });
 
+    let extraPrompt = '';
+    if (req.web_search) {
+      onMetadata({ search_status: 'searching' });
+      try {
+        const searchResults = await fetchWebSearch(req.message);
+        onMetadata({ search_status: 'done' });
+        if (searchResults.length > 0) {
+          const formattedResults = searchResults
+            .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`)
+            .join('\n\n');
+          extraPrompt = `\n\n--- REAL-TIME WEB SEARCH RESULTS ---\n${formattedResults}\n\nINSTRUCTIONS: Answer using the real-time web search results provided above. Always cite sources as markdown links like [1](URL), [2](URL).`;
+        }
+      } catch {
+        onMetadata({ search_status: 'done' });
+      }
+    }
+
     const bodyData = {
       model: rawModelId,
-      messages: [{ role: 'user', content: req.message }],
+      messages: [{ role: 'user', content: req.message + extraPrompt }],
       stream: true,
       temperature: 0.7,
     };
