@@ -42,7 +42,10 @@ export function ChatInput({
   const toggleVoiceInput = useCallback(() => {
     if (isListening) {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+        recognitionRef.current = null;
       }
       setIsListening(false);
       return;
@@ -58,6 +61,13 @@ export function ChatInput({
     }
 
     try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+        recognitionRef.current = null;
+      }
+
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -95,14 +105,16 @@ export function ChatInput({
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onerror = (event: any) => {
-        if (event.error !== 'no-speech') {
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
           showToast(`Voice input error: ${event.error}`, 'error');
         }
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognition.onend = () => {
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognitionRef.current = recognition;
@@ -110,6 +122,7 @@ export function ChatInput({
     } catch {
       showToast('Failed to start voice input', 'error');
       setIsListening(false);
+      recognitionRef.current = null;
     }
   }, [isListening, showToast]);
 
