@@ -397,9 +397,9 @@ export function SettingsModal() {
         </div>
 
         {/* Right Content Area */}
-        <div className="flex-1 bg-bg flex flex-col min-w-0">
+        <div className="flex-1 bg-bg flex flex-col min-w-0 h-full min-h-0">
           {/* Header */}
-          <div className="h-12 border-b border-line flex items-center justify-between px-6">
+          <div className="h-12 border-b border-line flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
             <span className="font-mono text-xs text-fg uppercase font-semibold">
               {activeSubTab.replace('-', ' ')}
             </span>
@@ -412,7 +412,10 @@ export function SettingsModal() {
           </div>
 
           {/* Scrolling Content Panel */}
-          <div className="flex-1 p-6 overflow-auto">
+          <div
+            className="flex-1 p-3.5 sm:p-6 overflow-y-auto overflow-x-hidden min-h-0"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
 
             {/* TAB: GENERAL */}
             {activeSubTab === 'general' && (
@@ -854,7 +857,7 @@ export function SettingsModal() {
                 ) : analytics ? (
                   <div className="flex flex-col gap-6">
                     {/* Stats counters */}
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div className="bg-surface border border-line p-4 rounded-md">
                         <div className="text-[10px] font-mono uppercase text-fg-4">Conversations</div>
                         <div className="text-xl font-bold font-mono text-fg mt-1">{analytics.total_conversations}</div>
@@ -995,7 +998,7 @@ export function SettingsModal() {
                 {/* ── TASK RECOMMENDATION CARDS ── */}
                 <div className="flex flex-col gap-2">
                   <div className="font-mono text-[10px] tracking-[1px] uppercase text-accent font-semibold">Which Model Should I Use?</div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 
                     {/* Privacy Card */}
                     <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors">
