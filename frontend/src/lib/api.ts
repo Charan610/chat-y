@@ -69,7 +69,9 @@ export async function streamDirectCloud(
 ): Promise<boolean> {
   let keys: Record<string, string> = {};
   if (req.api_keys) {
-    keys = req.api_keys;
+    for (const [k, v] of Object.entries(req.api_keys)) {
+      if (k && v) keys[k.toLowerCase()] = v;
+    }
   } else {
     try {
       const raw = localStorage.getItem('chaty_api_keys');
@@ -77,7 +79,7 @@ export async function streamDirectCloud(
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           for (const k of parsed) {
-            if (k.provider && k.api_key) keys[k.provider] = k.api_key;
+            if (k.provider && k.api_key) keys[k.provider.toLowerCase()] = k.api_key;
           }
         }
       }
@@ -90,7 +92,7 @@ export async function streamDirectCloud(
 
   if (modelStr.includes('/')) {
     const parts = modelStr.split('/');
-    provider = parts[0];
+    provider = parts[0].toLowerCase();
     rawModelId = parts.slice(1).join('/');
   } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1')) {
     provider = 'openai';

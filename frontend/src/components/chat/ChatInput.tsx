@@ -31,8 +31,13 @@ export function ChatInput({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const baseValueRef = useRef<string>('');
+  const valueRef = useRef<string>(value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   const toggleVoiceInput = useCallback(() => {
     if (isListening) {
@@ -59,7 +64,7 @@ export function ChatInput({
       recognition.lang = 'en-US';
 
       // Record starting value before speech input
-      baseValueRef.current = value;
+      baseValueRef.current = valueRef.current;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -106,7 +111,7 @@ export function ChatInput({
       showToast('Failed to start voice input', 'error');
       setIsListening(false);
     }
-  }, [isListening, value, showToast]);
+  }, [isListening, showToast]);
 
   useEffect(() => {
     return () => {
