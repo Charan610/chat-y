@@ -57,6 +57,7 @@ export function ChatContainer() {
         flexDirection: 'column',
         overflow: 'hidden',
         position: 'relative',
+        background: 'var(--bg)',
       }}
     >
       <input {...getInputProps()} />
@@ -64,22 +65,24 @@ export function ChatContainer() {
       {/* Drag overlay */}
       {isDragActive && (
         <div
+          className="animate-fade-in"
           style={{
             position: 'absolute',
-            inset: 0,
+            inset: 12,
             zIndex: 50,
-            background: 'rgba(122,142,170,0.06)',
+            background: 'rgba(122,142,170,0.04)',
             border: '2px dashed var(--accent-bd)',
-            borderRadius: 8,
+            borderRadius: 16,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             pointerEvents: 'none',
+            backdropFilter: 'blur(4px)',
           }}
         >
           <div style={{ textAlign: 'center', color: 'var(--accent)' }}>
-            <Upload size={40} style={{ margin: '0 auto 12px', opacity: 0.7 }} />
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, letterSpacing: '0.06em' }}>
+            <Upload size={36} style={{ margin: '0 auto 12px', opacity: 0.6 }} />
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', fontWeight: 500 }}>
               DROP FILES TO ATTACH
             </p>
           </div>

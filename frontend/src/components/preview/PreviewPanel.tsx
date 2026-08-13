@@ -13,6 +13,14 @@ export function PreviewPanel() {
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (!file) {
@@ -78,117 +86,194 @@ export function PreviewPanel() {
 
   const getFileIcon = (type: string) => {
     switch (type) {
-      case 'image': return <Image className="w-8 h-8 text-accent" />;
-      case 'video': return <Video className="w-8 h-8 text-accent" />;
-      case 'audio': return <AudioLines className="w-8 h-8 text-accent" />;
-      case 'code': return <Code className="w-8 h-8 text-accent" />;
-      default: return <FileText className="w-8 h-8 text-fg-3" />;
+      case 'image': return <Image className="w-7 h-7" style={{ color: 'var(--accent)' }} />;
+      case 'video': return <Video className="w-7 h-7" style={{ color: 'var(--accent)' }} />;
+      case 'audio': return <AudioLines className="w-7 h-7" style={{ color: 'var(--accent)' }} />;
+      case 'code': return <Code className="w-7 h-7" style={{ color: 'var(--accent)' }} />;
+      default: return <FileText className="w-7 h-7" style={{ color: 'var(--fg-3)' }} />;
     }
   };
 
-  return (
-    <div className="w-[340px] border-l border-line bg-surface flex flex-col h-full z-40 animate-[fadeIn_220ms_ease] overflow-hidden">
-      {/* Header */}
-      <div className="h-12 border-bottom border-line flex items-center justify-between px-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-[10px] tracking-[1.5px] uppercase text-fg-3">File Preview</span>
-        </div>
-        <button
+  // Mobile: bottom sheet layout
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
           onClick={handleClose}
-          className="text-fg-4 hover:text-fg transition-colors p-1 rounded hover:bg-hover cursor-pointer"
+          className="fixed inset-0 z-40"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+        />
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 animate-slide-up-sheet safe-area-bottom"
+          style={{
+            background: 'var(--surface)',
+            borderTop: '1px solid var(--line)',
+            borderRadius: '16px 16px 0 0',
+            maxHeight: '85dvh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
         >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Info Card */}
-      <div className="p-4 border-b border-line flex gap-3 items-center">
-        <div className="p-2.5 bg-elevated border border-line-2 rounded-md">
-          {getFileIcon(file.file_type)}
+          {/* Handle */}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--line-3)' }} />
+          </div>
+          {renderContent(file)}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-fg truncate" title={file.original_name}>
-            {file.original_name}
-          </div>
-          <div className="text-[10px] font-mono text-fg-3 uppercase mt-0.5">
-            {file.file_type} • {formatSize(file.file_size)}
-          </div>
-        </div>
-      </div>
+      </>
+    );
+  }
 
-      {/* Actions */}
-      <div className="p-2.5 border-b border-line bg-bg flex gap-2 justify-end">
-        <button
-          onClick={handleCopyPath}
-          className="btn flex items-center gap-1.5 py-1 px-2.5 text-xs rounded"
-          title="Copy file path"
-        >
-          {copied ? <Check className="w-3.5 h-3.5 text-[#6b9a78]" /> : <Copy className="w-3.5 h-3.5" />}
-          Copy Path
-        </button>
-        <a
-          href={`/uploads/${file.filename}`}
-          download={file.original_name}
-          className="btn btn-primary flex items-center gap-1.5 py-1 px-2.5 text-xs rounded"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Download
-        </a>
-        <button
-          onClick={handleDelete}
-          className="btn border-[#b87470]/25 text-[#b87470] hover:bg-[#b87470]/10 flex items-center gap-1.5 py-1 px-2.5 text-xs rounded"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          Delete
-        </button>
-      </div>
-
-      {/* Preview Content */}
-      <div className="flex-1 overflow-auto bg-bg p-4 flex flex-col justify-start">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-48 gap-3">
-            <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            <span className="text-[10px] font-mono uppercase text-fg-4">Loading preview...</span>
-          </div>
-        ) : file.file_type === 'image' ? (
-          <div className="flex items-center justify-center bg-elevated border border-line p-2 rounded-md overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/uploads/${file.filename}`}
-              alt={file.original_name}
-              className="max-w-full max-h-[300px] object-contain rounded"
-            />
-          </div>
-        ) : file.file_type === 'video' ? (
-          <div className="bg-elevated border border-line p-2 rounded-md overflow-hidden">
-            <video
-              src={`/uploads/${file.filename}`}
-              controls
-              className="w-full rounded"
-            />
-          </div>
-        ) : file.file_type === 'audio' ? (
-          <div className="bg-elevated border border-line p-4 rounded-md flex justify-center">
-            <audio
-              src={`/uploads/${file.filename}`}
-              controls
-              className="w-full"
-            />
-          </div>
-        ) : previewContent ? (
-          <div className="flex-grow flex flex-col h-full">
-            <pre className="text-xs font-mono text-fg-2 bg-elevated p-3 border border-line rounded-md overflow-auto max-h-[450px] whitespace-pre-wrap select-text">
-              <code>{previewContent}</code>
-            </pre>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center p-8 text-center text-fg-4 border border-dashed border-line rounded-md">
-            <FileText className="w-6 h-6 mb-2 text-fg-3" />
-            <p className="text-xs font-sans">No interactive preview available</p>
-            <p className="text-[10px] font-mono uppercase mt-1">Download to view file contents</p>
-          </div>
-        )}
-      </div>
+  // Desktop: side panel
+  return (
+    <div
+      className="animate-slide-in-right"
+      style={{
+        width: 340,
+        borderLeft: '1px solid var(--line)',
+        background: 'var(--surface)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        zIndex: 40,
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      {renderContent(file)}
     </div>
   );
+
+  function renderContent(file: UploadedFile) {
+    return (
+      <>
+        {/* Header */}
+        <div style={{
+          height: 48,
+          borderBottom: '1px solid var(--line)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
+          flexShrink: 0,
+        }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--fg-3)' }}>
+            File Preview
+          </span>
+          <button
+            onClick={handleClose}
+            className="touch-btn"
+            style={{
+              color: 'var(--fg-4)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 6,
+              borderRadius: 6,
+              display: 'flex',
+              transition: 'all 150ms ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'var(--fg)';
+              e.currentTarget.style.background = 'var(--hover)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--fg-4)';
+              e.currentTarget.style.background = 'none';
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Info Card */}
+        <div style={{ padding: 14, borderBottom: '1px solid var(--line)', display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ padding: 10, background: 'var(--elevated)', border: '1px solid var(--line-2)', borderRadius: 8 }}>
+            {getFileIcon(file.file_type)}
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={file.original_name}>
+              {file.original_name}
+            </div>
+            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', marginTop: 2, textTransform: 'uppercase' }}>
+              {file.file_type} • {formatSize(file.file_size)}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ padding: 10, borderBottom: '1px solid var(--line)', background: 'var(--bg)', display: 'flex', gap: 6, justifyContent: 'flex-end', flexShrink: 0, flexWrap: 'wrap' }}>
+          <button onClick={handleCopyPath} className="btn" style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6 }}>
+            {copied ? <Check size={13} style={{ color: 'var(--ok)' }} /> : <Copy size={13} />}
+            Copy Path
+          </button>
+          <a href={`/uploads/${file.filename}`} download={file.original_name} className="btn-primary" style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6, textDecoration: 'none' }}>
+            <Download size={13} />
+            Download
+          </a>
+          <button
+            onClick={handleDelete}
+            className="btn"
+            style={{
+              fontSize: 11,
+              padding: '5px 10px',
+              borderRadius: 6,
+              borderColor: 'rgba(184,116,112,0.25)',
+              color: 'var(--bad)',
+            }}
+          >
+            <Trash2 size={13} />
+            Delete
+          </button>
+        </div>
+
+        {/* Preview Content */}
+        <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg)', padding: 14, WebkitOverflowScrolling: 'touch' }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, gap: 12 }}>
+              <div style={{ width: 20, height: 20, border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', textTransform: 'uppercase' }}>Loading preview...</span>
+            </div>
+          ) : file.file_type === 'image' ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--elevated)', border: '1px solid var(--line)', padding: 8, borderRadius: 8, overflow: 'hidden' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/uploads/${file.filename}`}
+                alt={file.original_name}
+                style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 6 }}
+              />
+            </div>
+          ) : file.file_type === 'video' ? (
+            <div style={{ background: 'var(--elevated)', border: '1px solid var(--line)', padding: 8, borderRadius: 8, overflow: 'hidden' }}>
+              <video
+                src={`/uploads/${file.filename}`}
+                controls
+                style={{ width: '100%', borderRadius: 6 }}
+              />
+            </div>
+          ) : file.file_type === 'audio' ? (
+            <div style={{ background: 'var(--elevated)', border: '1px solid var(--line)', padding: 14, borderRadius: 8, display: 'flex', justifyContent: 'center' }}>
+              <audio
+                src={`/uploads/${file.filename}`}
+                controls
+                style={{ width: '100%' }}
+              />
+            </div>
+          ) : previewContent ? (
+            <pre style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--fg-2)', background: 'var(--elevated)', padding: 12, border: '1px solid var(--line)', borderRadius: 8, overflowX: 'auto', maxHeight: 450, whiteSpace: 'pre-wrap', WebkitOverflowScrolling: 'touch' }}>
+              <code>{previewContent}</code>
+            </pre>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', color: 'var(--fg-4)', border: '1px dashed var(--line)', borderRadius: 8 }}>
+              <FileText size={24} style={{ marginBottom: 8, color: 'var(--fg-3)' }} />
+              <p style={{ fontSize: 12, margin: 0 }}>No interactive preview available</p>
+              <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginTop: 4, textTransform: 'uppercase' }}>Download to view file contents</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
 }

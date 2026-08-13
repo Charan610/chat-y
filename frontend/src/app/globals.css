@@ -26,6 +26,36 @@
   --bad: #b87470;
   --font-sans: 'Geist', -apple-system, system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* ── Responsive Layout Tokens ── */
+  --chat-max-width: 720px;
+  --chat-padding: 16px;
+  --input-radius: 20px;
+  --nav-height: 48px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 56px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --chat-padding: 24px;
+    --input-radius: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --chat-padding: 48px;
+    --chat-max-width: 760px;
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --chat-max-width: 800px;
+  }
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────────── */
@@ -35,6 +65,9 @@
 
 html {
   color-scheme: dark;
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -46,31 +79,49 @@ body {
   -moz-osx-font-smoothing: grayscale;
   font-size: 14px;
   line-height: 1.6;
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100dvh;
 }
 
-/* ── Scrollbar ───────────────────────────────────────────────────────────────── */
+/* ── Scrollbar — auto-hiding, subtle ────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--line-2);
-  border-radius: 2px;
+  background: transparent;
+  border-radius: 3px;
+  transition: background 300ms;
 }
+*:hover > ::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb:hover {
+  background: var(--line-2);
+}
+::-webkit-scrollbar-thumb:active {
   background: var(--line-3);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: var(--line-2) transparent;
 }
 
 /* ── Utility Classes ─────────────────────────────────────────────────────────── */
 @layer components {
   .btn {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all duration-[120ms] cursor-pointer select-none;
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium cursor-pointer select-none;
     background: var(--elevated);
     color: var(--fg-2);
     border: 1px solid var(--line-2);
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 100ms ease;
   }
   .btn:hover {
     background: var(--hover);
@@ -78,40 +129,46 @@ body {
     border-color: var(--line-3);
   }
   .btn:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
   }
   .btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    transform: none;
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all duration-[120ms] cursor-pointer select-none;
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium cursor-pointer select-none;
     background: var(--accent);
     color: #fff;
     border: 1px solid transparent;
+    transition: background 150ms ease, transform 100ms ease, box-shadow 200ms ease;
   }
   .btn-primary:hover {
     background: var(--accent-2);
+    box-shadow: 0 2px 12px rgba(122, 142, 170, 0.2);
   }
   .btn-primary:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
   }
   .btn-primary:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    transform: none;
   }
 
   .input {
-    @apply w-full px-3 py-2 rounded text-sm outline-none transition-all duration-[120ms];
+    @apply w-full px-3 py-2 rounded text-sm outline-none;
     background: var(--elevated);
     color: var(--fg);
     border: 1px solid var(--line-2);
     font-family: var(--font-sans);
+    transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
   }
   .input:focus {
     border-color: var(--accent-bd);
     background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(122, 142, 170, 0.08);
   }
   .input::placeholder {
     color: var(--fg-4);
@@ -155,12 +212,38 @@ body {
   .card {
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 8px;
-    transition: border-color 120ms, background 120ms;
+    border-radius: 10px;
+    transition: border-color 200ms ease, background 200ms ease, transform 200ms ease, box-shadow 200ms ease;
   }
   .card:hover {
     border-color: var(--line-2);
     background: var(--elevated);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  /* ── Chat-specific layout ── */
+  .chat-column {
+    max-width: var(--chat-max-width);
+    margin: 0 auto;
+    width: 100%;
+    padding-left: var(--chat-padding);
+    padding-right: var(--chat-padding);
+  }
+
+  /* Touch-friendly button */
+  .touch-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Glass effect */
+  .glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
   }
 }
 
@@ -180,6 +263,36 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(8px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -190,34 +303,58 @@ body {
   50% { opacity: 0; }
 }
 
-@keyframes slideInRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.8); }
+  60% { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 .animate-breathe { animation: breathe 3.2s ease-in-out infinite; }
 .animate-pulse2 { animation: dotPulse 2.4s ease-in-out infinite; }
-.animate-fade-in { animation: fadeIn 220ms ease forwards; }
+.animate-fade-in { animation: fadeIn 250ms ease forwards; }
+.animate-fade-in-scale { animation: fadeInScale 200ms ease forwards; }
+.animate-slide-up { animation: slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slide-in-right { animation: slideInRight 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slide-up-sheet { animation: slideUpSheet 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-scale-in { animation: scaleIn 200ms ease forwards; }
 .animate-toast-in { animation: toastIn 200ms ease forwards; }
-.animate-slide-in-right { animation: slideInRight 220ms ease forwards; }
+.animate-pop-in { animation: popIn 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .streaming-cursor { animation: cursorBlink 0.8s ease-in-out infinite; }
+
+/* Shimmer for loading states */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--elevated) 25%,
+    var(--line) 50%,
+    var(--elevated) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
 
 /* ── Code blocks ─────────────────────────────────────────────────────────────── */
 pre {
   background: var(--elevated) !important;
   border: 1px solid var(--line-2);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 12px 16px;
   overflow-x: auto;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.7;
   margin: 8px 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 code {
@@ -228,15 +365,15 @@ code {
 :not(pre) > code {
   background: var(--elevated);
   border: 1px solid var(--line-2);
-  border-radius: 3px;
-  padding: 1px 5px;
+  border-radius: 4px;
+  padding: 1px 6px;
   color: var(--accent);
 }
 
 /* ── Markdown prose dark ─────────────────────────────────────────────────────── */
 .prose-dark {
   color: var(--fg);
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .prose-dark h1,
@@ -247,11 +384,11 @@ code {
   font-weight: 600;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
-.prose-dark h1 { font-size: 1.4em; }
-.prose-dark h2 { font-size: 1.2em; }
+.prose-dark h1 { font-size: 1.35em; }
+.prose-dark h2 { font-size: 1.15em; }
 .prose-dark h3 { font-size: 1.05em; }
 
 .prose-dark p {
@@ -284,8 +421,10 @@ code {
 .prose-dark a {
   color: var(--accent);
   text-decoration: none;
+  transition: color 150ms ease;
 }
 .prose-dark a:hover {
+  color: var(--accent-2);
   text-decoration: underline;
 }
 
@@ -328,7 +467,23 @@ code {
 
 .prose-dark img {
   max-width: 100%;
-  border-radius: 6px;
+  border-radius: 8px;
+}
+
+/* ── Mobile-specific prose adjustments ── */
+@media (max-width: 639px) {
+  .prose-dark {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .prose-dark h1 { font-size: 1.2em; }
+  .prose-dark h2 { font-size: 1.1em; }
+
+  pre {
+    font-size: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+  }
 }
 
 /* ── Highlight.js overrides ─────────────────────────────────────────────────── */
@@ -353,4 +508,24 @@ code {
 /* ── Selection ───────────────────────────────────────────────────────────────── */
 ::selection {
   background: rgba(122, 142, 170, 0.3);
+}
+
+/* ── Safe area support (notched devices) ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ── Focus visible for accessibility ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible) {
+  outline: none;
 }

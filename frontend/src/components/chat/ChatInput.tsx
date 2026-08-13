@@ -26,6 +26,7 @@ export function ChatInput({
   const { state, dispatch, stopStreaming, showToast } = useApp();
   const { isStreaming, webSearchEnabled, activeModel } = state;
   const [value, setValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,271 +98,321 @@ export function ChatInput({
 
   return (
     <div
-      className="border-t border-line bg-surface p-2 sm:p-3 flex-shrink-0 w-full"
+      className="safe-area-bottom"
+      style={{
+        flexShrink: 0,
+        padding: '8px 12px 12px',
+        background: 'transparent',
+      }}
     >
-      {/* Pending files */}
-      {pendingFiles.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-          {pendingFiles.map(f => (
-            <div
-              key={f.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                background: 'var(--elevated)',
-                border: '1px solid var(--line-2)',
-                borderRadius: 5,
-                padding: '3px 8px 3px 6px',
-                fontSize: 12,
-                color: 'var(--fg-2)',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
-              <span>📎</span>
-              <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {f.original_name}
-              </span>
-              <span style={{ color: 'var(--fg-4)' }}>{formatBytes(f.file_size)}</span>
+      {/* Centered floating container */}
+      <div
+        style={{
+          maxWidth: 'var(--chat-max-width)',
+          margin: '0 auto',
+          width: '100%',
+        }}
+      >
+        {/* Pending files */}
+        {pendingFiles.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, paddingLeft: 4 }}>
+            {pendingFiles.map(f => (
+              <div
+                key={f.id}
+                className="animate-fade-in"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: 'var(--elevated)',
+                  border: '1px solid var(--line-2)',
+                  borderRadius: 8,
+                  padding: '4px 8px 4px 6px',
+                  fontSize: 12,
+                  color: 'var(--fg-2)',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                <span>📎</span>
+                <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {f.original_name}
+                </span>
+                <span style={{ color: 'var(--fg-4)', fontSize: 11 }}>{formatBytes(f.file_size)}</span>
+                <button
+                  onClick={() => onRemoveFile(f.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--fg-4)',
+                    cursor: 'pointer',
+                    padding: 2,
+                    display: 'flex',
+                    borderRadius: 4,
+                    transition: 'color 150ms ease',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--bad)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--fg-4)')}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Floating input pill */}
+        <div
+          style={{
+            border: `1px solid ${isFocused ? 'var(--accent-bd)' : 'var(--line-2)'}`,
+            borderRadius: 'var(--input-radius)',
+            background: 'var(--surface)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            transition: 'border-color 200ms ease, box-shadow 300ms ease',
+            boxShadow: isFocused
+              ? '0 0 0 3px rgba(122,142,170,0.08), 0 8px 32px rgba(0,0,0,0.3)'
+              : '0 4px 20px rgba(0,0,0,0.2)',
+          }}
+        >
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder="Message Chat-Y…"
+            rows={1}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--fg)',
+              fontFamily: 'var(--font-sans)',
+              fontSize: 14,
+              lineHeight: '1.6',
+              padding: '14px 16px 0',
+              outline: 'none',
+              resize: 'none',
+              width: '100%',
+              minHeight: 44,
+              maxHeight: 152,
+              overflowY: 'auto',
+            }}
+          />
+
+          {/* Bottom toolbar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '6px 10px 10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+              />
               <button
-                onClick={() => onRemoveFile(f.id)}
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach file"
+                className="touch-btn"
                 style={{
                   background: 'none',
                   border: 'none',
                   color: 'var(--fg-4)',
                   cursor: 'pointer',
-                  padding: 0,
+                  padding: 6,
+                  borderRadius: 8,
                   display: 'flex',
-                  marginLeft: 2,
-                }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--bad)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--fg-4)')}
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Textarea */}
-      <div
-        style={{
-          border: '1px solid var(--line-2)',
-          borderRadius: 10,
-          background: 'var(--elevated)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          transition: 'border-color 120ms',
-        }}
-        onFocusCapture={e => {
-          const el = e.currentTarget as HTMLElement;
-          el.style.borderColor = 'var(--accent-bd)';
-        }}
-        onBlurCapture={e => {
-          const el = e.currentTarget as HTMLElement;
-          el.style.borderColor = 'var(--line-2)';
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          placeholder="Message Chat-Y… (Shift+Enter for newline)"
-          rows={1}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--fg)',
-            fontFamily: 'var(--font-sans)',
-            fontSize: 14,
-            lineHeight: '1.6',
-            padding: '12px 14px 0',
-            outline: 'none',
-            resize: 'none',
-            width: '100%',
-            minHeight: 44,
-            maxHeight: 152,
-            overflowY: 'auto',
-          }}
-        />
-
-        {/* Bottom toolbar */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '6px 10px 8px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            {/* Upload */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              style={{ display: 'none' }}
-              onChange={handleFileUpload}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              title="Attach file"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--fg-4)',
-                cursor: 'pointer',
-                padding: 5,
-                borderRadius: 5,
-                display: 'flex',
-                transition: 'color 120ms, background 120ms',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = 'var(--fg)';
-                e.currentTarget.style.background = 'var(--hover)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = 'var(--fg-4)';
-                e.currentTarget.style.background = 'none';
-              }}
-            >
-              <Paperclip size={15} />
-            </button>
-
-            {/* Mic */}
-            <button
-              title="Voice input"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--fg-4)',
-                cursor: 'pointer',
-                padding: 5,
-                borderRadius: 5,
-                display: 'flex',
-                transition: 'color 120ms, background 120ms',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = 'var(--fg)';
-                e.currentTarget.style.background = 'var(--hover)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = 'var(--fg-4)';
-                e.currentTarget.style.background = 'none';
-              }}
-            >
-              <Mic size={15} />
-            </button>
-
-            {/* Web Search */}
-            <button
-              onClick={() => dispatch({ type: 'TOGGLE_WEB_SEARCH' })}
-              title="Toggle web search"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                background: webSearchEnabled ? 'var(--accent-bg)' : 'none',
-                border: webSearchEnabled ? '1px solid var(--accent-bd)' : '1px solid transparent',
-                color: webSearchEnabled ? 'var(--accent)' : 'var(--fg-4)',
-                cursor: 'pointer',
-                padding: '4px 6px',
-                borderRadius: 5,
-                fontSize: 11,
-                fontFamily: 'var(--font-mono)',
-                transition: 'all 120ms',
-              }}
-            >
-              <Globe size={13} />
-              {webSearchEnabled && <span>WEB</span>}
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Model pill */}
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                color: 'var(--fg-4)',
-                background: 'var(--surface)',
-                border: '1px solid var(--line)',
-                borderRadius: 4,
-                padding: '2px 6px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: 140,
-              }}
-            >
-              {getModelShort(activeModel)}
-            </span>
-
-            {/* Send / Stop */}
-            {isStreaming ? (
-              <button
-                onClick={stopStreaming}
-                title="Stop streaming"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  background: 'var(--bad)',
-                  border: 'none',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  transition: 'opacity 120ms',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
-                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-              >
-                <Square size={12} fill="#fff" />
-              </button>
-            ) : (
-              <button
-                onClick={handleSend}
-                disabled={!value.trim()}
-                title="Send (Enter)"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  background: value.trim() ? 'var(--accent)' : 'var(--line-2)',
-                  border: 'none',
-                  color: value.trim() ? '#fff' : 'var(--fg-4)',
-                  cursor: value.trim() ? 'pointer' : 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  transition: 'all 120ms',
+                  transition: 'color 150ms ease, background 150ms ease',
                 }}
                 onMouseEnter={e => {
-                  if (value.trim()) e.currentTarget.style.background = 'var(--accent-2)';
+                  e.currentTarget.style.color = 'var(--fg)';
+                  e.currentTarget.style.background = 'var(--hover)';
                 }}
                 onMouseLeave={e => {
-                  if (value.trim()) e.currentTarget.style.background = 'var(--accent)';
+                  e.currentTarget.style.color = 'var(--fg-4)';
+                  e.currentTarget.style.background = 'none';
                 }}
               >
-                <ArrowUp size={15} />
+                <Paperclip size={16} />
               </button>
-            )}
+
+              {/* Mic */}
+              <button
+                title="Voice input"
+                className="touch-btn hidden sm:flex"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--fg-4)',
+                  cursor: 'pointer',
+                  padding: 6,
+                  borderRadius: 8,
+                  transition: 'color 150ms ease, background 150ms ease',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = 'var(--fg)';
+                  e.currentTarget.style.background = 'var(--hover)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = 'var(--fg-4)';
+                  e.currentTarget.style.background = 'none';
+                }}
+              >
+                <Mic size={16} />
+              </button>
+
+              {/* Web Search */}
+              <button
+                onClick={() => dispatch({ type: 'TOGGLE_WEB_SEARCH' })}
+                title="Toggle web search"
+                className="touch-btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: webSearchEnabled ? 'var(--accent-bg)' : 'none',
+                  border: webSearchEnabled ? '1px solid var(--accent-bd)' : '1px solid transparent',
+                  color: webSearchEnabled ? 'var(--accent)' : 'var(--fg-4)',
+                  cursor: 'pointer',
+                  padding: '5px 7px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  transition: 'all 200ms ease',
+                }}
+              >
+                <Globe size={14} />
+                {webSearchEnabled && <span className="hidden sm:inline">WEB</span>}
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Model pill */}
+              <span
+                className="hidden sm:inline-flex"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  color: 'var(--fg-4)',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 6,
+                  padding: '3px 8px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: 130,
+                  alignItems: 'center',
+                }}
+              >
+                {getModelShort(activeModel)}
+              </span>
+
+              {/* Send / Stop */}
+              {isStreaming ? (
+                <button
+                  onClick={stopStreaming}
+                  title="Stop streaming"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: 'var(--bad)',
+                    border: 'none',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'all 150ms ease',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.opacity = '0.85';
+                    e.currentTarget.style.transform = 'scale(0.95)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <Square size={12} fill="#fff" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!value.trim()}
+                  title="Send (Enter)"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: value.trim() ? 'var(--accent)' : 'var(--line-2)',
+                    border: 'none',
+                    color: value.trim() ? '#fff' : 'var(--fg-4)',
+                    cursor: value.trim() ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'all 200ms ease',
+                    transform: 'scale(1)',
+                  }}
+                  onMouseEnter={e => {
+                    if (value.trim()) {
+                      e.currentTarget.style.background = 'var(--accent-2)';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (value.trim()) {
+                      e.currentTarget.style.background = 'var(--accent)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }
+                  }}
+                  onMouseDown={e => {
+                    if (value.trim()) {
+                      e.currentTarget.style.transform = 'scale(0.92)';
+                    }
+                  }}
+                  onMouseUp={e => {
+                    if (value.trim()) {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                >
+                  <ArrowUp size={16} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Hint */}
-      <p style={{ margin: '6px 0 0', textAlign: 'center', fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-mono)' }}>
-        Enter to send · Shift+Enter for new line · Paste images directly
-      </p>
+        {/* Hint — hidden on mobile */}
+        <p
+          className="hidden sm:block"
+          style={{
+            margin: '6px 0 0',
+            textAlign: 'center',
+            fontSize: 11,
+            color: 'var(--fg-4)',
+            fontFamily: 'var(--font-mono)',
+            opacity: 0.7,
+          }}
+        >
+          Enter to send · Shift+Enter for new line · Paste images directly
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -56,6 +56,7 @@ function ConvContextMenu({
     return (
       <div
         ref={ref}
+        className="animate-fade-in-scale"
         style={{
           position: 'fixed',
           top: y,
@@ -63,10 +64,10 @@ function ConvContextMenu({
           zIndex: 9999,
           background: 'var(--elevated)',
           border: '1px solid var(--line-2)',
-          borderRadius: 8,
+          borderRadius: 10,
           padding: 8,
           minWidth: 200,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
         }}
       >
         <input
@@ -93,7 +94,7 @@ function ConvContextMenu({
   return (
     <div
       ref={ref}
-      className="animate-fade-in"
+      className="animate-fade-in-scale"
       style={{
         position: 'fixed',
         top: y,
@@ -101,35 +102,38 @@ function ConvContextMenu({
         zIndex: 9999,
         background: 'var(--elevated)',
         border: '1px solid var(--line-2)',
-        borderRadius: 8,
+        borderRadius: 10,
         padding: 4,
         minWidth: 160,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
       }}
     >
       {items.map(item => (
         <button
           key={item.label}
           onClick={item.action}
+          className="touch-btn"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            padding: '6px 10px',
+            padding: '8px 12px',
             width: '100%',
             background: 'none',
             border: 'none',
-            borderRadius: 4,
+            borderRadius: 6,
             cursor: 'pointer',
             color: item.danger ? 'var(--bad)' : 'var(--fg-2)',
             fontSize: 13,
             textAlign: 'left',
-            transition: 'background 120ms',
+            transition: 'background 150ms ease, color 150ms ease',
+            justifyContent: 'flex-start',
+            minHeight: 40,
           }}
           onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'none')}
         >
-          <item.icon size={13} />
+          <item.icon size={14} />
           {item.label}
         </button>
       ))}
@@ -148,10 +152,15 @@ export function Sidebar() {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
+      // Auto-close sidebar on mobile on initial load
+      if (mobile && sidebarOpen) {
+        dispatch({ type: 'SET_SIDEBAR', payload: false });
+      }
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = conversations
@@ -181,52 +190,76 @@ export function Sidebar() {
     }
   };
 
-  const SidebarWidth = isMobile ? (sidebarOpen ? 280 : 0) : (sidebarOpen ? 240 : 56);
+  // Touch swipe to close on mobile
+  const touchStartX = useRef(0);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (diff > 60 && isMobile) {
+      dispatch({ type: 'SET_SIDEBAR', payload: false });
+    }
+  }, [isMobile, dispatch]);
 
   return (
     <>
       {/* Mobile Backdrop */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={() => dispatch({ type: 'SET_SIDEBAR', payload: false })}
-          className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-40 animate-[fadeIn_150ms_ease]"
-        />
-      )}
+      <AnimatePresence>
+        {isMobile && sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => dispatch({ type: 'SET_SIDEBAR', payload: false })}
+            className="fixed inset-0 z-40"
+            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          />
+        )}
+      </AnimatePresence>
 
       <motion.aside
         animate={{
-          width: isMobile ? (sidebarOpen ? 280 : 0) : (sidebarOpen ? 240 : 56),
+          width: isMobile ? (sidebarOpen ? 280 : 0) : (sidebarOpen ? 260 : 56),
           x: isMobile && !sidebarOpen ? -280 : 0,
         }}
-        transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{
+          duration: 0.3,
+          ease: [0.25, 0.1, 0.25, 1],
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         style={{
           background: 'var(--surface)',
           borderRight: '1px solid var(--line)',
           display: 'flex',
           flexDirection: 'column',
-          height: '100vh',
+          height: '100%',
           overflow: 'hidden',
           flexShrink: 0,
           position: isMobile ? 'fixed' : 'relative',
           left: 0,
           top: 0,
           zIndex: isMobile ? 50 : 10,
-          boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none',
+          boxShadow: isMobile && sidebarOpen ? '4px 0 32px rgba(0,0,0,0.4)' : 'none',
+          willChange: 'width, transform',
         }}
       >
         {/* Logo */}
         <div
           style={{
-            padding: sidebarOpen ? '16px 12px 12px' : '16px 0 12px',
+            padding: sidebarOpen ? '14px 14px 12px' : '14px 0 12px',
             display: 'flex',
             alignItems: 'center',
             gap: 10,
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
             borderBottom: '1px solid var(--line)',
+            flexShrink: 0,
           }}
         >
           {/* Brand Logo with breathing glow */}
-          <div style={{ position: 'relative', width: 32, height: 32, flexShrink: 0 }}>
+          <div style={{ position: 'relative', width: 30, height: 30, flexShrink: 0 }}>
             <div
               className="animate-breathe"
               style={{
@@ -237,8 +270,8 @@ export function Sidebar() {
               }}
             />
             <svg
-              width="32"
-              height="32"
+              width="30"
+              height="30"
               viewBox="0 0 100 100"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -252,26 +285,29 @@ export function Sidebar() {
               <polygon points="50,40 40.5,57.5 59.5,57.5" fill="white"/>
             </svg>
           </div>
-          {sidebarOpen && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 13,
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                color: 'var(--fg)',
-              }}
-            >
-              CHAT-Y
-            </motion.span>
-          )}
+          <AnimatePresence>
+            {sidebarOpen && (
+              <motion.span
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.15 }}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  letterSpacing: '0.12em',
+                  color: 'var(--fg)',
+                }}
+              >
+                CHAT-Y
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* New Chat */}
-        <div style={{ padding: sidebarOpen ? '10px 8px 6px' : '10px 4px 6px' }}>
+        <div style={{ padding: sidebarOpen ? '10px 10px 6px' : '10px 6px 6px', flexShrink: 0 }}>
           <button
             onClick={() => handleNewChat()}
             style={{
@@ -280,21 +316,24 @@ export function Sidebar() {
               alignItems: 'center',
               justifyContent: sidebarOpen ? 'flex-start' : 'center',
               gap: 8,
-              padding: sidebarOpen ? '8px 10px' : '8px',
+              padding: sidebarOpen ? '9px 12px' : '9px',
               background: 'var(--accent-bg)',
               border: '1px solid var(--accent-bd)',
-              borderRadius: 6,
+              borderRadius: 8,
               color: 'var(--accent)',
               fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
-              transition: 'all 120ms',
+              transition: 'all 200ms ease',
+              minHeight: 40,
             }}
             onMouseEnter={e => {
               e.currentTarget.style.background = 'rgba(122,142,170,0.14)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'var(--accent-bg)';
+              e.currentTarget.style.transform = 'none';
             }}
           >
             <Plus size={15} />
@@ -303,54 +342,64 @@ export function Sidebar() {
         </div>
 
         {/* Search */}
-        {sidebarOpen && (
-          <div style={{ padding: '0 8px 8px' }}>
-            <div style={{ position: 'relative' }}>
-              <Search
-                size={13}
-                style={{
-                  position: 'absolute',
-                  left: 8,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--fg-4)',
-                }}
-              />
-              <input
-                className="input"
-                style={{ paddingLeft: 28, fontSize: 12, height: 30 }}
-                placeholder="Search…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{ padding: '0 10px 8px', overflow: 'hidden', flexShrink: 0 }}
+            >
+              <div style={{ position: 'relative' }}>
+                <Search
+                  size={13}
                   style={{
                     position: 'absolute',
-                    right: 6,
+                    left: 9,
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
                     color: 'var(--fg-4)',
-                    cursor: 'pointer',
-                    padding: 0,
+                    pointerEvents: 'none',
                   }}
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+                />
+                <input
+                  className="input"
+                  style={{ paddingLeft: 28, fontSize: 12, height: 32 }}
+                  placeholder="Search chats…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    style={{
+                      position: 'absolute',
+                      right: 6,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--fg-4)',
+                      cursor: 'pointer',
+                      padding: 4,
+                      display: 'flex',
+                    }}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Conversation List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: sidebarOpen ? '0 4px' : '0 4px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px' }}>
           {/* Pinned */}
           {pinned.length > 0 && sidebarOpen && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ padding: '6px 8px 4px', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '0.08em', fontWeight: 600 }}>
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ padding: '8px 8px 4px', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '0.1em', fontWeight: 600 }}>
                 PINNED
               </div>
               {pinned.map(conv => (
@@ -370,7 +419,7 @@ export function Sidebar() {
           {recent.length > 0 && (
             <div>
               {sidebarOpen && (
-                <div style={{ padding: '6px 8px 4px', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '0.08em', fontWeight: 600 }}>
+                <div style={{ padding: '8px 8px 4px', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '0.1em', fontWeight: 600 }}>
                   RECENT
                 </div>
               )}
@@ -388,15 +437,16 @@ export function Sidebar() {
           )}
 
           {conversations.length === 0 && sidebarOpen && (
-            <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--fg-4)', fontSize: 12 }}>
-              <MessageSquare size={24} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
-              <p>No conversations yet</p>
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--fg-4)', fontSize: 12 }}>
+              <MessageSquare size={24} style={{ margin: '0 auto 10px', opacity: 0.3 }} />
+              <p style={{ margin: 0 }}>No conversations yet</p>
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--fg-4)' }}>Start a new chat to begin</p>
             </div>
           )}
         </div>
 
         {/* Bottom Nav */}
-        <div style={{ borderTop: '1px solid var(--line)', padding: sidebarOpen ? '8px 8px' : '8px 4px' }}>
+        <div style={{ borderTop: '1px solid var(--line)', padding: sidebarOpen ? '6px 10px 8px' : '6px 6px 8px', flexShrink: 0 }}>
           {[
             { icon: Brain, label: 'Memories', tab: 'memory' },
             { icon: BarChart2, label: 'Analytics', tab: 'analytics' },
@@ -412,7 +462,7 @@ export function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: sidebarOpen ? '7px 8px' : '7px',
+                padding: sidebarOpen ? '8px 10px' : '8px',
                 justifyContent: sidebarOpen ? 'flex-start' : 'center',
                 background: 'none',
                 border: 'none',
@@ -420,7 +470,8 @@ export function Sidebar() {
                 color: 'var(--fg-3)',
                 fontSize: 13,
                 cursor: 'pointer',
-                transition: 'all 120ms',
+                transition: 'all 150ms ease',
+                minHeight: 36,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'var(--hover)';
@@ -442,7 +493,7 @@ export function Sidebar() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              padding: sidebarOpen ? '7px 8px' : '7px',
+              padding: sidebarOpen ? '8px 10px' : '8px',
               justifyContent: sidebarOpen ? 'flex-start' : 'center',
               background: 'none',
               border: 'none',
@@ -450,7 +501,8 @@ export function Sidebar() {
               color: 'var(--fg-3)',
               fontSize: 13,
               cursor: 'pointer',
-              transition: 'all 120ms',
+              transition: 'all 150ms ease',
+              minHeight: 36,
             }}
             onMouseEnter={e => {
               e.currentTarget.style.background = 'var(--hover)';
@@ -507,14 +559,15 @@ function ConvItem({
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        padding: collapsed ? '8px' : '7px 8px',
+        padding: collapsed ? '8px' : '8px 10px',
         justifyContent: collapsed ? 'center' : 'flex-start',
-        borderRadius: 6,
+        borderRadius: 8,
         cursor: 'pointer',
-        transition: 'background 120ms',
+        transition: 'background 150ms ease',
         background: active ? 'var(--hover)' : hover ? 'rgba(255,255,255,0.03)' : 'none',
         borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
-        marginBottom: 1,
+        marginBottom: 2,
+        minHeight: 44,
       }}
     >
       {collapsed ? (
@@ -536,16 +589,16 @@ function ConvItem({
             <div style={{
               fontSize: 11,
               color: 'var(--fg-4)',
-              marginTop: 1,
+              marginTop: 2,
               fontFamily: 'var(--font-mono)',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
             }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 90 }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 }}>
                 {getModelShort(conv.model)}
               </span>
-              <span>·</span>
+              <span style={{ opacity: 0.5 }}>·</span>
               <span>{formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true })}</span>
             </div>
           </div>
@@ -557,15 +610,16 @@ function ConvItem({
                 border: 'none',
                 color: 'var(--fg-4)',
                 cursor: 'pointer',
-                padding: 2,
+                padding: 4,
                 borderRadius: 4,
                 flexShrink: 0,
                 display: 'flex',
+                transition: 'color 150ms ease',
               }}
               onMouseEnter={e => (e.currentTarget.style.color = 'var(--fg)')}
               onMouseLeave={e => (e.currentTarget.style.color = 'var(--fg-4)')}
             >
-              <MoreHorizontal size={13} />
+              <MoreHorizontal size={14} />
             </button>
           )}
         </>

@@ -12,16 +12,17 @@ import {
   Search,
   User,
   Copy,
-  Key
+  Key,
+  X,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { ModelPickerModal } from '@/components/modals/ModelPickerModal';
 
 const PROVIDER_BADGES: Record<string, { label: string; color: string }> = {
-  webllm: { label: '✦ WEB-GPU', color: '#6b9a78' },
+  webllm: { label: '✦ LOCAL', color: '#6b9a78' },
   groq: { label: '⚡ FAST', color: '#b8956a' },
-  nvidia: { label: '🧠 REASONING', color: '#7a8eaa' },
-  nvidia_nim: { label: '🧠 REASONING', color: '#7a8eaa' },
+  nvidia: { label: '🧠 REASON', color: '#7a8eaa' },
+  nvidia_nim: { label: '🧠 REASON', color: '#7a8eaa' },
   openai: { label: 'GPT', color: '#6b9a78' },
   anthropic: { label: 'CLAUDE', color: '#a891c8' },
   google: { label: 'GEMINI', color: '#7a8eaa' },
@@ -46,6 +47,7 @@ export function TopNav() {
   const [showProfile, setShowProfile] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   // User Profile state
   const userName = typeof window !== 'undefined' ? localStorage.getItem('chaty_user_name') || 'User' : 'User';
@@ -62,6 +64,18 @@ export function TopNav() {
     }
   }, [editingTitle]);
 
+  // Close profile popover on outside click
+  useEffect(() => {
+    if (!showProfile) return;
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showProfile]);
+
   const startEdit = () => {
     setTitleInput(activeConv?.title || 'New Chat');
     setEditingTitle(true);
@@ -77,14 +91,15 @@ export function TopNav() {
   return (
     <>
       <header
+        className="glass"
         style={{
-          height: 48,
+          height: 'var(--nav-height)',
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          padding: '0 16px',
+          gap: 8,
+          padding: '0 12px',
           borderBottom: '1px solid var(--line)',
-          background: 'var(--surface)',
+          background: 'rgba(17, 17, 17, 0.85)',
           flexShrink: 0,
           position: 'relative',
           zIndex: 5,
@@ -93,21 +108,28 @@ export function TopNav() {
         {/* Hamburger */}
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+          className="touch-btn"
           style={{
             background: 'none',
             border: 'none',
             color: 'var(--fg-3)',
             cursor: 'pointer',
-            padding: 4,
-            borderRadius: 4,
+            padding: 6,
+            borderRadius: 6,
             display: 'flex',
             flexShrink: 0,
-            transition: 'color 120ms',
+            transition: 'color 150ms ease, background 150ms ease',
           }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--fg)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--fg-3)')}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = 'var(--fg)';
+            e.currentTarget.style.background = 'var(--hover)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'var(--fg-3)';
+            e.currentTarget.style.background = 'none';
+          }}
         >
-          <Menu size={16} />
+          <Menu size={17} />
         </button>
 
         {/* Title */}
@@ -125,14 +147,15 @@ export function TopNav() {
               style={{
                 background: 'var(--elevated)',
                 border: '1px solid var(--accent-bd)',
-                borderRadius: 4,
+                borderRadius: 6,
                 color: 'var(--fg)',
                 fontSize: 13,
                 fontWeight: 500,
-                padding: '2px 6px',
+                padding: '4px 8px',
                 outline: 'none',
                 fontFamily: 'var(--font-sans)',
-                maxWidth: 160,
+                maxWidth: 200,
+                width: '100%',
               }}
             />
           ) : (
@@ -145,15 +168,15 @@ export function TopNav() {
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: activeConv ? 'text' : 'default',
-                padding: '2px 4px',
-                borderRadius: 4,
+                padding: '4px 6px',
+                borderRadius: 6,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                maxWidth: 140,
+                maxWidth: 180,
                 textAlign: 'left',
                 fontFamily: 'var(--font-sans)',
-                transition: 'background 120ms',
+                transition: 'background 150ms ease',
               }}
               onMouseEnter={e => activeConv && (e.currentTarget.style.background = 'var(--hover)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -165,16 +188,17 @@ export function TopNav() {
           {/* Model badge (desktop only) */}
           {badge && (
             <span
-              className="hidden md:inline-block"
+              className="hidden md:inline-flex"
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: 10,
                 color: badge.color,
-                background: `${badge.color}18`,
-                border: `1px solid ${badge.color}40`,
-                borderRadius: 3,
-                padding: '1px 5px',
+                background: `${badge.color}12`,
+                border: `1px solid ${badge.color}30`,
+                borderRadius: 4,
+                padding: '2px 6px',
                 flexShrink: 0,
+                alignItems: 'center',
               }}
             >
               {badge.label}
@@ -183,28 +207,29 @@ export function TopNav() {
         </div>
 
         {/* Right Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
           {/* Web Search Toggle */}
           <button
             id="web-search-toggle"
             onClick={() => dispatch({ type: 'TOGGLE_WEB_SEARCH' })}
             title="Toggle web search"
+            className="touch-btn"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              padding: '3px 6px',
-              borderRadius: 5,
+              padding: '5px 8px',
+              borderRadius: 8,
               border: `1px solid ${webSearchEnabled ? 'var(--accent-bd)' : 'var(--line-2)'}`,
-              background: webSearchEnabled ? 'var(--accent-bg)' : 'none',
+              background: webSearchEnabled ? 'var(--accent-bg)' : 'transparent',
               color: webSearchEnabled ? 'var(--accent)' : 'var(--fg-4)',
               cursor: 'pointer',
               fontSize: 11,
               fontFamily: 'var(--font-mono)',
-              transition: 'all 120ms',
+              transition: 'all 200ms ease',
             }}
           >
-            <Globe size={13} />
+            <Globe size={14} />
             {webSearchEnabled && <span className="hidden sm:inline">WEB</span>}
           </button>
 
@@ -212,20 +237,21 @@ export function TopNav() {
           <button
             id="model-selector-btn"
             onClick={() => setShowModelPicker(true)}
+            className="touch-btn"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              padding: '3px 6px',
-              borderRadius: 5,
+              padding: '5px 8px',
+              borderRadius: 8,
               border: '1px solid var(--line-2)',
               background: 'var(--elevated)',
               color: 'var(--fg-2)',
               cursor: 'pointer',
               fontSize: 11,
               fontFamily: 'var(--font-mono)',
-              transition: 'all 120ms',
-              maxWidth: 105,
+              transition: 'all 200ms ease',
+              maxWidth: 120,
             }}
             onMouseEnter={e => {
               e.currentTarget.style.borderColor = 'var(--line-3)';
@@ -239,36 +265,43 @@ export function TopNav() {
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {getModelDisplay(activeModel)}
             </span>
-            <ChevronDown size={11} style={{ flexShrink: 0 }} />
+            <ChevronDown size={11} style={{ flexShrink: 0, opacity: 0.6 }} />
           </button>
 
-          {/* Settings button (always visible) */}
+          {/* Settings button */}
           <button
             onClick={() => dispatch({ type: 'SET_SETTINGS_OPEN', payload: true })}
-            className="flex"
+            className="touch-btn hidden sm:flex"
             title="Workspace Settings"
             style={{
               background: 'none',
               border: 'none',
               color: 'var(--fg-4)',
               cursor: 'pointer',
-              padding: 4,
-              borderRadius: 4,
-              transition: 'color 120ms',
+              padding: 6,
+              borderRadius: 6,
+              transition: 'color 150ms ease, background 150ms ease',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--fg)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--fg-4)')}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'var(--fg)';
+              e.currentTarget.style.background = 'var(--hover)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--fg-4)';
+              e.currentTarget.style.background = 'none';
+            }}
           >
             <Settings size={15} />
           </button>
 
           {/* Avatar */}
-          <div className="relative">
+          <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowProfile(!showProfile)}
+              className="touch-btn"
               style={{
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 borderRadius: '50%',
                 background: 'var(--accent-bg)',
                 border: '1px solid var(--accent-bd)',
@@ -281,8 +314,17 @@ export function TopNav() {
                 fontFamily: 'var(--font-mono)',
                 cursor: 'pointer',
                 flexShrink: 0,
+                transition: 'transform 150ms ease, box-shadow 150ms ease',
               }}
               title={`${userName} (${userId})`}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(122,142,170,0.15)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               {userName.charAt(0).toUpperCase()}
             </button>
@@ -290,34 +332,82 @@ export function TopNav() {
             {/* Profile Popover */}
             {showProfile && (
               <div
-                className="absolute right-0 top-9 w-60 bg-surface border border-line rounded-lg shadow-xl p-3 flex flex-col gap-2.5 z-50 animate-[fadeIn_100ms_ease]"
+                className="animate-fade-in-scale"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 40,
+                  width: 240,
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  zIndex: 50,
+                }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center gap-2.5 pb-2 border-b border-line">
-                  <div className="w-8 h-8 rounded-full bg-accent-bg border border-accent-bd flex items-center justify-center font-bold text-accent font-mono text-xs">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 8, borderBottom: '1px solid var(--line)' }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'var(--accent-bg)',
+                    border: '1px solid var(--accent-bd)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    color: 'var(--accent)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 12,
+                    flexShrink: 0,
+                  }}>
                     {userName.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-semibold text-fg truncate">{userName}</span>
-                    <span className="text-[10px] text-fg-4 font-mono">Workspace User</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
+                    <div style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-mono)' }}>Workspace User</div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-mono text-fg-4 uppercase tracking-[1px]">Unique User ID</span>
-                  <div className="flex items-center gap-1.5 p-1.5 bg-bg border border-line rounded font-mono text-[11px]">
-                    <Key className="w-3 h-3 text-accent flex-shrink-0" />
-                    <span className="text-accent font-semibold flex-1 truncate">{userId}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '1px', textTransform: 'uppercase' }}>User ID</span>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 8px',
+                    background: 'var(--bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 6,
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 11,
+                  }}>
+                    <Key size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span style={{ color: 'var(--accent)', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userId}</span>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(userId);
                         setCopiedId(true);
                         setTimeout(() => setCopiedId(false), 2000);
                       }}
-                      className="p-1 hover:bg-hover text-fg-4 hover:text-fg rounded transition-colors cursor-pointer"
+                      style={{
+                        padding: 4,
+                        background: 'none',
+                        border: 'none',
+                        color: copiedId ? 'var(--ok)' : 'var(--fg-4)',
+                        cursor: 'pointer',
+                        borderRadius: 4,
+                        display: 'flex',
+                        transition: 'all 150ms ease',
+                      }}
                       title="Copy User ID"
                     >
-                      {copiedId ? <Check className="w-3 h-3 text-[#6b9a78]" /> : <Copy className="w-3 h-3" />}
+                      {copiedId ? <Check size={12} /> : <Copy size={12} />}
                     </button>
                   </div>
                 </div>
@@ -327,7 +417,8 @@ export function TopNav() {
                     setShowProfile(false);
                     dispatch({ type: 'SET_SETTINGS_OPEN', payload: true });
                   }}
-                  className="btn btn-secondary text-[11px] py-1 text-center w-full mt-0.5"
+                  className="btn"
+                  style={{ justifyContent: 'center', fontSize: 11, marginTop: 2 }}
                 >
                   Workspace Settings
                 </button>

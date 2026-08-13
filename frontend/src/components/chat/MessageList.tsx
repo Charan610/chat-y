@@ -7,41 +7,43 @@ import { format } from 'date-fns';
 
 function DateDivider({ date }: { date: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        margin: '16px 0 8px',
-        padding: '0 24px',
-      }}
-    >
-      <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-      <span
+    <div className="chat-column">
+      <div
         style={{
-          fontSize: 11,
-          fontFamily: 'var(--font-mono)',
-          color: 'var(--fg-4)',
-          letterSpacing: '0.06em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          margin: '20px 0 12px',
         }}
       >
-        {date}
-      </span>
-      <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+        <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+        <span
+          style={{
+            fontSize: 11,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--fg-4)',
+            letterSpacing: '0.08em',
+            flexShrink: 0,
+          }}
+        >
+          {date}
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+      </div>
     </div>
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="chat-column" style={{ paddingTop: 24, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
       {[1, 2, 3].map(i => (
-        <div key={i} style={{ display: 'flex', gap: 12, opacity: 0.5 }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--elevated)', flexShrink: 0 }} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ height: 12, width: '60%', borderRadius: 4, background: 'var(--elevated)' }} />
-            <div style={{ height: 12, width: '80%', borderRadius: 4, background: 'var(--elevated)' }} />
-            <div style={{ height: 12, width: '45%', borderRadius: 4, background: 'var(--elevated)' }} />
+        <div key={i} style={{ display: 'flex', gap: 12 }}>
+          <div className="shimmer" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="shimmer" style={{ height: 12, width: '55%', borderRadius: 6 }} />
+            <div className="shimmer" style={{ height: 12, width: '80%', borderRadius: 6 }} />
+            <div className="shimmer" style={{ height: 12, width: '40%', borderRadius: 6 }} />
           </div>
         </div>
       ))}
@@ -53,11 +55,15 @@ export function MessageList() {
   const { state } = useApp();
   const { messages, isStreaming, streamingContent, streamingMessageId, isLoadingMessages } = state;
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on new messages or streaming
   useEffect(() => {
     if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: isStreaming ? 'auto' : 'smooth', block: 'end' });
+      bottomRef.current.scrollIntoView({
+        behavior: isStreaming ? 'auto' : 'smooth',
+        block: 'end',
+      });
     }
   }, [messages.length, streamingContent, isStreaming]);
 
@@ -77,14 +83,19 @@ export function MessageList() {
 
   return (
     <div
+      ref={scrollContainerRef}
       style={{
         flex: 1,
         overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
-        paddingBottom: 8,
+        scrollPaddingBottom: 80,
+        WebkitOverflowScrolling: 'touch',
       }}
     >
+      {/* Top spacer for breathing room */}
+      <div style={{ flexShrink: 0, height: 8 }} />
+
       {grouped.map(group => (
         <div key={group.date}>
           <DateDivider date={group.date} />
@@ -115,7 +126,8 @@ export function MessageList() {
         />
       )}
 
-      <div ref={bottomRef} />
+      {/* Bottom spacer */}
+      <div ref={bottomRef} style={{ flexShrink: 0, height: 16 }} />
     </div>
   );
 }

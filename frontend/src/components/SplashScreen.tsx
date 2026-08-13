@@ -1,93 +1,320 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Sparkles, Bot, Zap, ArrowRight } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface SplashScreenProps {
   onFinish?: () => void;
 }
 
 export function SplashScreen({ onFinish }: SplashScreenProps) {
-  const [stage, setStage] = useState<'animating' | 'ready' | 'exiting'>('animating');
+  const [phase, setPhase] = useState(0); // 0: logo, 1: text, 2: ready, 3: exit
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Subtle particle/noise field
   useEffect(() => {
-    // Stage 1: Animation sequence (1.8s)
-    const timer1 = setTimeout(() => {
-      setStage('ready');
-    }, 1800);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    return () => clearTimeout(timer1);
+    const dpr = window.devicePixelRatio || 1;
+    const resize = () => {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles: { x: number; y: number; vx: number; vy: number; size: number; opacity: number }[] = [];
+    const count = Math.min(60, Math.floor(window.innerWidth / 20));
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        size: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.3 + 0.05,
+      });
+    }
+
+    let animId: number;
+    const draw = () => {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      // Draw connections between nearby particles
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            const alpha = (1 - dist / 120) * 0.06;
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(122, 142, 170, ${alpha})`;
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Draw particles
+      for (const p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(122, 142, 170, ${p.opacity})`;
+        ctx.fill();
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > window.innerWidth) p.vx *= -1;
+        if (p.y < 0 || p.y > window.innerHeight) p.vy *= -1;
+      }
+
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  // Phase progression
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 400);
+    const t2 = setTimeout(() => setPhase(2), 1600);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const handleEnter = () => {
-    setStage('exiting');
-    setTimeout(() => {
-      if (onFinish) onFinish();
-    }, 500);
+    setPhase(3);
+    setTimeout(() => onFinish?.(), 600);
   };
+
+  // Auto-enter after delay if user doesn't click
+  useEffect(() => {
+    if (phase !== 2) return;
+    const autoEnter = setTimeout(handleEnter, 8000);
+    return () => clearTimeout(autoEnter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0a0d14] text-white transition-opacity duration-500 ease-in-out ${
-        stage === 'exiting' ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#09090b',
+        overflow: 'hidden',
+        opacity: phase === 3 ? 0 : 1,
+        transition: 'opacity 600ms cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: phase === 2 ? 'pointer' : 'default',
+      }}
+      onClick={phase === 2 ? handleEnter : undefined}
     >
-      {/* Background glow effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] md:w-[500px] md:h-[500px] bg-gradient-to-tr from-[#4DE8F0]/20 to-[#9D7BFF]/20 rounded-full blur-[100px] pointer-events-none animate-pulse" />
+      {/* Particle canvas */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          opacity: phase >= 1 ? 0.8 : 0,
+          transition: 'opacity 1.5s ease',
+        }}
+      />
 
-      {/* Main Animated Icon Container */}
-      <div className="relative flex flex-col items-center gap-6 z-10 px-4 text-center">
-        <div className="relative flex items-center justify-center">
-          {/* Rotating halo ring */}
-          <div className="absolute w-24 h-24 md:w-32 md:h-32 rounded-full border-2 border-transparent border-t-[#4DE8F0] border-r-[#9D7BFF] animate-spin" style={{ animationDuration: '3s' }} />
+      {/* Subtle radial glow behind logo */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          height: 400,
+          background: 'radial-gradient(circle, rgba(122,142,170,0.06) 0%, transparent 70%)',
+          pointerEvents: 'none',
+          opacity: phase >= 1 ? 1 : 0,
+          transition: 'opacity 2s ease',
+        }}
+      />
 
-          {/* Inner pulsating icon box */}
-          <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-gradient-to-br from-[#121824] to-[#1e293b] border border-[#4DE8F0]/40 flex items-center justify-center shadow-[0_0_40px_rgba(77,232,240,0.3)] transition-transform duration-700 hover:scale-105">
-            <Bot className="w-10 h-10 md:w-14 md:h-14 text-[#4DE8F0] animate-bounce" style={{ animationDuration: '2s' }} />
-          </div>
-
-          <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-[#9D7BFF] animate-pulse" />
-          <Zap className="absolute -bottom-1 -left-2 w-5 h-5 text-[#4DE8F0] animate-pulse" />
+      {/* Main Content */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 0,
+        }}
+      >
+        {/* Logo mark — the same brand SVG, clean */}
+        <div
+          style={{
+            opacity: phase >= 0 ? 1 : 0,
+            transform: phase >= 0 ? 'scale(1)' : 'scale(0.8)',
+            transition: 'all 800ms cubic-bezier(0.16, 1, 0.3, 1)',
+            marginBottom: 24,
+          }}
+        >
+          <svg
+            width="56"
+            height="56"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="50" cy="50" r="48" fill="#141414" stroke="#252525" strokeWidth="1.5"/>
+            <circle cx="50" cy="50" r="44" fill="#111111"/>
+            <rect x="27" y="27" width="46" height="46" rx="10" fill="#ededed"/>
+            <circle cx="50" cy="50" r="18" fill="#09090b"/>
+            <polygon points="50,40 40.5,57.5 59.5,57.5" fill="#ededed"/>
+          </svg>
         </div>
 
-        {/* Branding & Title */}
-        <div className="flex flex-col items-center gap-2">
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#4DE8F0] via-white to-[#9D7BFF]">
+        {/* Wordmark */}
+        <div
+          style={{
+            opacity: phase >= 1 ? 1 : 0,
+            transform: phase >= 1 ? 'translateY(0)' : 'translateY(12px)',
+            transition: 'all 700ms cubic-bezier(0.16, 1, 0.3, 1) 100ms',
+          }}
+        >
+          <h1
+            style={{
+              fontFamily: "'Geist', -apple-system, system-ui, sans-serif",
+              fontSize: 'clamp(32px, 6vw, 48px)',
+              fontWeight: 300,
+              letterSpacing: '0.25em',
+              color: '#ededed',
+              margin: 0,
+              lineHeight: 1,
+              userSelect: 'none',
+            }}
+          >
             CHAT-Y
           </h1>
-          <p className="text-xs md:text-sm font-mono text-gray-400 tracking-widest uppercase">
-            Integrated WebLLM & Multi-Cloud Workspace
+        </div>
+
+        {/* Tagline — understated, elegant */}
+        <div
+          style={{
+            opacity: phase >= 1 ? 1 : 0,
+            transform: phase >= 1 ? 'translateY(0)' : 'translateY(8px)',
+            transition: 'all 600ms cubic-bezier(0.16, 1, 0.3, 1) 300ms',
+            marginTop: 10,
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Geist', sans-serif",
+              fontSize: 14,
+              fontWeight: 400,
+              color: '#6b6b6b',
+              margin: 0,
+              letterSpacing: '0.04em',
+              userSelect: 'none',
+            }}
+          >
+            multi-model ai workspace
           </p>
         </div>
 
-        {/* Provider Badges */}
-        <div className="flex flex-wrap justify-center items-center gap-2 mt-2 max-w-md">
-          {['WebLLM (Local)', 'Groq', 'Gemini', 'OpenRouter', 'NVIDIA NIM'].map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] md:text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 font-mono"
-            >
-              {tag}
-            </span>
-          ))}
+        {/* Divider line */}
+        <div
+          style={{
+            width: phase >= 1 ? 48 : 0,
+            height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(122,142,170,0.4), transparent)',
+            marginTop: 28,
+            transition: 'width 800ms cubic-bezier(0.16, 1, 0.3, 1) 500ms',
+          }}
+        />
+
+        {/* Enter prompt */}
+        <div
+          style={{
+            marginTop: 28,
+            opacity: phase >= 2 ? 1 : 0,
+            transform: phase >= 2 ? 'translateY(0)' : 'translateY(6px)',
+            transition: 'all 500ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <button
+            onClick={handleEnter}
+            style={{
+              background: 'none',
+              border: '1px solid rgba(122,142,170,0.2)',
+              color: '#a1a1a1',
+              fontFamily: "'Geist Mono', monospace",
+              fontSize: 11,
+              letterSpacing: '0.12em',
+              padding: '10px 28px',
+              borderRadius: 100,
+              cursor: 'pointer',
+              transition: 'all 300ms ease',
+              userSelect: 'none',
+              textTransform: 'uppercase',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'rgba(122,142,170,0.5)';
+              e.currentTarget.style.color = '#ededed';
+              e.currentTarget.style.background = 'rgba(122,142,170,0.06)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'rgba(122,142,170,0.2)';
+              e.currentTarget.style.color = '#a1a1a1';
+              e.currentTarget.style.background = 'none';
+            }}
+          >
+            enter workspace →
+          </button>
         </div>
 
-        {/* Enter Button or Loading Indicator */}
-        <div className="mt-6 min-h-[44px] flex items-center justify-center">
-          {stage === 'animating' ? (
-            <div className="flex items-center gap-2 text-xs font-mono text-[#4DE8F0]">
-              <div className="w-2 h-2 rounded-full bg-[#4DE8F0] animate-ping" />
-              Initializing workspace engine...
-            </div>
-          ) : (
-            <button
-              onClick={handleEnter}
-              className="group flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#4DE8F0] to-[#9D7BFF] text-black font-semibold text-sm shadow-[0_0_25px_rgba(77,232,240,0.4)] hover:shadow-[0_0_35px_rgba(157,123,255,0.6)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0"
+        {/* Subtle footer info */}
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 20,
+            opacity: phase >= 2 ? 0.4 : 0,
+            transition: 'opacity 600ms ease 200ms',
+          }}
+        >
+          {['WebGPU', 'Groq', 'NVIDIA', 'OpenAI', 'Anthropic'].map(name => (
+            <span
+              key={name}
+              style={{
+                fontFamily: "'Geist Mono', monospace",
+                fontSize: 10,
+                color: '#6b6b6b',
+                letterSpacing: '0.06em',
+                userSelect: 'none',
+              }}
             >
-              <span>Enter Chat-Y Workspace</span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </button>
-          )}
+              {name}
+            </span>
+          ))}
         </div>
       </div>
     </div>

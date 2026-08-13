@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { X, Search, Check, Zap, Brain, Sparkles, Monitor, Shield, Download, Loader2 } from 'lucide-react';
 
@@ -12,6 +12,23 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
   const { state, dispatch, showToast } = useApp();
   const { activeModel, models } = state;
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   // Local WebLLM models
   const webllmModels = [
@@ -81,120 +98,241 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
 
   const getProviderIcon = (provider: string) => {
     switch (provider) {
-      case 'webllm': return <Shield className="w-3.5 h-3.5 text-[#6b9a78]" />;
-      case 'groq': return <Zap className="w-3.5 h-3.5 text-[#b8956a]" />;
-      case 'nvidia_nim': return <Brain className="w-3.5 h-3.5 text-[#7a8eaa]" />;
-      case 'openai': return <Sparkles className="w-3.5 h-3.5 text-[#6b9a78]" />;
-      case 'ollama': return <Monitor className="w-3.5 h-3.5 text-[#6b9a78]" />;
-      default: return <Sparkles className="w-3.5 h-3.5 text-accent" />;
+      case 'webllm': return <Shield size={13} style={{ color: '#6b9a78' }} />;
+      case 'groq': return <Zap size={13} style={{ color: '#b8956a' }} />;
+      case 'nvidia_nim': return <Brain size={13} style={{ color: '#7a8eaa' }} />;
+      case 'openai': return <Sparkles size={13} style={{ color: '#6b9a78' }} />;
+      case 'ollama': return <Monitor size={13} style={{ color: '#6b9a78' }} />;
+      default: return <Sparkles size={13} style={{ color: 'var(--accent)' }} />;
     }
   };
 
   const getSpeedBadge = (provider: string) => {
     if (provider === 'webllm') {
       return (
-        <span className="text-[8px] font-mono uppercase bg-[#6b9a78]/15 text-[#6b9a78] border border-[#6b9a78]/30 px-1 rounded">
+        <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'rgba(107,154,120,0.12)', color: '#6b9a78', border: '1px solid rgba(107,154,120,0.25)', padding: '1px 4px', borderRadius: 3 }}>
           ✦ WebGPU Private
         </span>
       );
     }
     if (provider === 'groq') {
       return (
-        <span className="text-[8px] font-mono uppercase bg-[#b8956a]/15 text-[#b8956a] border border-[#b8956a]/30 px-1 rounded">
+        <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'rgba(184,149,106,0.12)', color: '#b8956a', border: '1px solid rgba(184,149,106,0.25)', padding: '1px 4px', borderRadius: 3 }}>
           ⚡ Fast
         </span>
       );
     }
     if (provider === 'nvidia_nim') {
       return (
-        <span className="text-[8px] font-mono uppercase bg-[#7a8eaa]/15 text-[#7a8eaa] border border-[#7a8eaa]/30 px-1 rounded">
-          🧠 reasoning
+        <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'rgba(122,142,170,0.12)', color: '#7a8eaa', border: '1px solid rgba(122,142,170,0.25)', padding: '1px 4px', borderRadius: 3 }}>
+          🧠 Reasoning
         </span>
       );
     }
     return null;
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[1px] p-4">
-      {/* Modal Dialog */}
-      <div className="w-full max-w-[420px] max-h-[500px] bg-surface border border-line rounded-lg shadow-xl flex flex-col overflow-hidden animate-[fadeIn_150ms_ease]">
-        {/* Header */}
-        <div className="h-11 border-b border-line flex items-center justify-between px-4 bg-surface flex-shrink-0">
-          <span className="font-mono text-xs text-fg uppercase font-semibold">Select AI Model</span>
-          <button
-            onClick={onClose}
-            className="text-fg-4 hover:text-fg transition-colors p-1 rounded hover:bg-hover cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+  const modalContent = (
+    <>
+      {/* Header */}
+      <div style={{
+        height: 48,
+        borderBottom: '1px solid var(--line)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 16px',
+        background: 'var(--surface)',
+        flexShrink: 0,
+      }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
+          Select AI Model
+        </span>
+        <button
+          onClick={onClose}
+          className="touch-btn"
+          style={{
+            color: 'var(--fg-4)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 6,
+            borderRadius: 6,
+            display: 'flex',
+            transition: 'all 150ms ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = 'var(--fg)';
+            e.currentTarget.style.background = 'var(--hover)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'var(--fg-4)';
+            e.currentTarget.style.background = 'none';
+          }}
+        >
+          <X size={16} />
+        </button>
+      </div>
 
-        {/* Search */}
-        <div className="p-3 border-b border-line bg-bg flex-shrink-0 relative">
-          <Search className="w-4 h-4 absolute left-6 top-1/2 -translate-y-1/2 text-fg-4" />
-          <input
-            type="text"
-            placeholder="Search models..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="input w-full pl-9 py-1.5 text-xs"
-            autoFocus
-          />
-        </div>
+      {/* Search */}
+      <div style={{ padding: 12, borderBottom: '1px solid var(--line)', background: 'var(--bg)', flexShrink: 0, position: 'relative' }}>
+        <Search size={14} style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-4)', pointerEvents: 'none' }} />
+        <input
+          type="text"
+          placeholder="Search models..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="input"
+          style={{ paddingLeft: 36, fontSize: 12, height: 36 }}
+          autoFocus={!isMobile}
+        />
+      </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-auto p-2.5 bg-bg flex flex-col gap-3">
-          {Object.keys(groupedModels).length === 0 ? (
-            <div className="p-6 text-center text-xs text-fg-4">No matching models found.</div>
-          ) : (
-            Object.entries(groupedModels).map(([provider, providerModels]) => (
-              <div key={provider} className="flex flex-col gap-1">
-                <div className="flex items-center gap-1.5 px-2 py-1 font-mono text-[9px] tracking-[1.5px] uppercase text-fg-4 border-b border-line-2/40">
-                  {getProviderIcon(provider)}
-                  {provider.replace('_', ' ')}
-                </div>
-                
-                <div className="flex flex-col gap-0.5 mt-1">
-                  {providerModels.map((model) => {
-                    const modelStr = getModelString(model.provider, model.model_id);
-                    const isSelected = activeModel === modelStr;
-
-                    return (
-                      <button
-                        key={model.model_id}
-                        onClick={() => handleSelectModel(model.provider, model.model_id)}
-                        className={`flex items-start justify-between p-2 rounded-md text-left transition-colors cursor-pointer w-full border border-transparent ${
-                          isSelected
-                            ? 'bg-accent-bg border-accent-bd text-accent'
-                            : 'hover:bg-surface hover:border-line text-fg-2 hover:text-fg'
-                        }`}
-                      >
-                        <div className="min-w-0 pr-2">
-                          <div className="text-xs font-semibold flex items-center gap-2">
-                            {model.name}
-                            {getSpeedBadge(model.provider)}
-                          </div>
-                          <div className="text-[10px] font-mono text-fg-4 truncate mt-0.5" title={model.model_id}>
-                            {model.model_id}
-                          </div>
-                          <div className="text-[10px] text-fg-3 leading-normal mt-1 font-sans">
-                            {model.description}
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <div className="flex-shrink-0 mt-0.5 text-accent">
-                            <Check className="w-4 h-4" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+      {/* List */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 10, background: 'var(--bg)', display: 'flex', flexDirection: 'column', gap: 12, WebkitOverflowScrolling: 'touch' }}>
+        {Object.keys(groupedModels).length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', fontSize: 12, color: 'var(--fg-4)' }}>No matching models found.</div>
+        ) : (
+          Object.entries(groupedModels).map(([provider, providerModels]) => (
+            <div key={provider} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 8px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9,
+                letterSpacing: '1.5px',
+                textTransform: 'uppercase',
+                color: 'var(--fg-4)',
+                borderBottom: '1px solid rgba(31,31,31,0.5)',
+              }}>
+                {getProviderIcon(provider)}
+                {provider.replace('_', ' ')}
               </div>
-            ))
-          )}
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {providerModels.map((model) => {
+                  const modelStr = getModelString(model.provider, model.model_id);
+                  const isSelected = activeModel === modelStr;
+
+                  return (
+                    <button
+                      key={model.model_id}
+                      onClick={() => handleSelectModel(model.provider, model.model_id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        padding: '10px 10px',
+                        borderRadius: 8,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        width: '100%',
+                        border: isSelected ? '1px solid var(--accent-bd)' : '1px solid transparent',
+                        background: isSelected ? 'var(--accent-bg)' : 'none',
+                        color: isSelected ? 'var(--accent)' : 'var(--fg-2)',
+                        transition: 'all 150ms ease',
+                        minHeight: 48,
+                      }}
+                      onMouseEnter={e => {
+                        if (!isSelected) {
+                          e.currentTarget.style.background = 'var(--surface)';
+                          e.currentTarget.style.borderColor = 'var(--line)';
+                          e.currentTarget.style.color = 'var(--fg)';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isSelected) {
+                          e.currentTarget.style.background = 'none';
+                          e.currentTarget.style.borderColor = 'transparent';
+                          e.currentTarget.style.color = 'var(--fg-2)';
+                        }
+                      }}
+                    >
+                      <div style={{ minWidth: 0, paddingRight: 8, flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {model.name}
+                          {getSpeedBadge(model.provider)}
+                        </div>
+                        <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }} title={model.model_id}>
+                          {model.model_id}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--fg-3)', lineHeight: 1.4, marginTop: 3 }}>
+                          {model.description}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent)' }}>
+                          <Check size={16} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </>
+  );
+
+  // Mobile: bottom sheet
+  if (isMobile) {
+    return (
+      <>
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-[100]"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+        />
+        <div
+          className="fixed bottom-0 left-0 right-0 z-[101] animate-slide-up-sheet safe-area-bottom"
+          style={{
+            background: 'var(--surface)',
+            borderTop: '1px solid var(--line)',
+            borderRadius: '16px 16px 0 0',
+            maxHeight: '80dvh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Handle */}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 0' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--line-3)' }} />
+          </div>
+          {modalContent}
         </div>
+      </>
+    );
+  }
+
+  // Desktop: centered modal
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', padding: 16 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        className="animate-scale-in"
+        style={{
+          width: '100%',
+          maxWidth: 440,
+          maxHeight: 520,
+          background: 'var(--surface)',
+          border: '1px solid var(--line)',
+          borderRadius: 14,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {modalContent}
       </div>
     </div>
   );

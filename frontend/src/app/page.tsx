@@ -38,7 +38,10 @@ export default function Page() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden relative" style={{ background: 'var(--bg)' }}>
+    <div
+      className="flex h-[100dvh] w-screen overflow-hidden relative safe-area-top"
+      style={{ background: 'var(--bg)' }}
+    >
       {showOnboarding && (
         <UserOnboardingModal onComplete={handleOnboardingComplete} />
       )}
