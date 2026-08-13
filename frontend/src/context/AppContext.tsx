@@ -346,7 +346,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setActiveConversation = useCallback(async (id: string | null) => {
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id });
-    if (!id) {
+    if (!id || id.startsWith('conv-') || id.startsWith('local-')) {
       dispatch({ type: 'SET_MESSAGES', payload: [] });
       return;
     }
@@ -355,11 +355,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const msgs = await fetchMessages(id);
       dispatch({ type: 'SET_MESSAGES', payload: msgs });
     } catch {
-      showToast('Failed to load messages', 'error');
+      dispatch({ type: 'SET_MESSAGES', payload: [] });
     } finally {
       dispatch({ type: 'SET_LOADING_MESSAGES', payload: false });
     }
-  }, [showToast]);
+  }, []);
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
@@ -488,15 +488,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let finalMetadata: Partial<Message> = {};
     let resolvedConvId = state.activeConversationId || '';
 
+    const sendConvId = state.activeConversationId?.startsWith('conv-') || state.activeConversationId?.startsWith('local-')
+      ? undefined
+      : state.activeConversationId || undefined;
+
     await streamChat(
       {
-        conversation_id: state.activeConversationId || undefined,
+        conversation_id: sendConvId,
         message: content,
         model: state.activeModel,
         web_search: state.webSearchEnabled,
         file_ids: fileIds,
       },
       (chunk) => {
+        streamContentRef.current += chunk;
         dispatch({ type: 'APPEND_STREAM', payload: chunk });
       },
       (meta) => {
@@ -520,11 +525,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         resolvedConvId = convId || resolvedConvId;
         dispatch({ type: 'SET_STREAMING', payload: false });
 
-        // Build final assistant message from streamed content
-        // We get the current streaming content from state via a ref approach
-        // Instead, we refetch messages for accuracy
+        const fullAssistantText = streamContentRef.current;
+
         try {
-          if (resolvedConvId) {
+          if (resolvedConvId && !resolvedConvId.startsWith('conv-') && !resolvedConvId.startsWith('local-')) {
             const msgs = await fetchMessages(resolvedConvId);
             dispatch({ type: 'SET_MESSAGES', payload: msgs });
 
@@ -532,9 +536,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const convs = await fetchConversations();
             dispatch({ type: 'SET_CONVERSATIONS', payload: convs });
             dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: resolvedConvId });
+          } else {
+            throw new Error('Local fallback');
           }
         } catch {
-          // keep streaming content visible
+          const assistantMsg: Message = {
+            id: `assistant-${Date.now()}`,
+            conversation_id: resolvedConvId || state.activeConversationId || '',
+            role: 'assistant',
+            content: fullAssistantText,
+            model: finalMetadata.model || state.activeModel,
+            provider: finalMetadata.provider || 'cloud',
+            prompt_tokens: finalMetadata.prompt_tokens || 0,
+            completion_tokens: finalMetadata.completion_tokens || 0,
+            total_tokens: finalMetadata.total_tokens || 0,
+            latency_ms: finalMetadata.latency_ms || 0,
+            estimated_cost: finalMetadata.estimated_cost || 0,
+            created_at: new Date().toISOString(),
+            is_pinned: false,
+          };
+          dispatch({ type: 'ADD_MESSAGE', payload: assistantMsg });
         }
         dispatch({ type: 'CLEAR_STREAM' });
         dispatch({ type: 'SET_STREAMING_ID', payload: null });
