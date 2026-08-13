@@ -27,8 +27,82 @@ export function ChatInput({
   const { isStreaming, webSearchEnabled, activeModel } = state;
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleVoiceInput = useCallback(() => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      showToast('Voice input is not supported in this browser. Try Chrome or Edge.', 'warning');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        showToast('Listening... Speak into microphone', 'info');
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setValue(prev => {
+            const separator = prev && !prev.endsWith(' ') ? ' ' : '';
+            return prev + separator + transcript;
+          });
+        }
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onerror = (event: any) => {
+        if (event.error !== 'no-speech') {
+          showToast(`Voice input error: ${event.error}`, 'error');
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      showToast('Failed to start voice input', 'error');
+      setIsListening(false);
+    }
+  }, [isListening, showToast]);
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -248,27 +322,33 @@ export function ChatInput({
 
               {/* Mic */}
               <button
-                title="Voice input"
-                className="touch-btn hidden sm:flex"
+                onClick={toggleVoiceInput}
+                title={isListening ? "Stop listening" : "Voice input"}
+                className="touch-btn flex"
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--fg-4)',
+                  background: isListening ? 'rgba(184, 116, 112, 0.15)' : 'none',
+                  border: isListening ? '1px solid var(--bad)' : 'none',
+                  color: isListening ? 'var(--bad)' : 'var(--fg-4)',
                   cursor: 'pointer',
                   padding: 6,
                   borderRadius: 8,
-                  transition: 'color 150ms ease, background 150ms ease',
+                  display: 'flex',
+                  transition: 'all 150ms ease',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.color = 'var(--fg)';
-                  e.currentTarget.style.background = 'var(--hover)';
+                  if (!isListening) {
+                    e.currentTarget.style.color = 'var(--fg)';
+                    e.currentTarget.style.background = 'var(--hover)';
+                  }
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.color = 'var(--fg-4)';
-                  e.currentTarget.style.background = 'none';
+                  if (!isListening) {
+                    e.currentTarget.style.color = 'var(--fg-4)';
+                    e.currentTarget.style.background = 'none';
+                  }
                 }}
               >
-                <Mic size={16} />
+                <Mic size={16} className={isListening ? "animate-pulse" : ""} />
               </button>
 
               {/* Web Search */}

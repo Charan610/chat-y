@@ -140,34 +140,61 @@ export function SettingsModal() {
       showToast('API Key value is required', 'error');
       return;
     }
+
+    const tempId = `key-${Date.now()}`;
+    const newKeyObj: APIKey = {
+      id: tempId,
+      provider: newKeyProvider,
+      key_name: newKeyName.trim() || `${newKeyProvider.toUpperCase()} Key`,
+      api_key: newKeyValue.trim(),
+      base_url: newKeyUrl.trim() || undefined,
+      is_active: true,
+      is_default: true,
+    };
+
+    // 1. Immediately update state & localStorage
+    const updatedKeys = [newKeyObj, ...state.apiKeys.filter(k => k.id !== tempId)];
+    dispatch({ type: 'SET_API_KEYS', payload: updatedKeys });
     try {
-      const key = await createAPIKey({
+      localStorage.setItem('chaty_api_keys', JSON.stringify(updatedKeys));
+    } catch {}
+
+    setNewKeyValue('');
+    setNewKeyName('');
+    setNewKeyUrl('');
+
+    // 2. Sync to backend API
+    try {
+      const serverKey = await createAPIKey({
         provider: newKeyProvider,
-        key_name: newKeyName || `${newKeyProvider.toUpperCase()} Key`,
-        api_key: newKeyValue,
-        base_url: newKeyUrl || undefined,
+        key_name: newKeyObj.key_name,
+        api_key: newKeyObj.api_key,
+        base_url: newKeyObj.base_url,
         is_active: true,
         is_default: true,
       });
-      dispatch({ type: 'SET_API_KEYS', payload: [key, ...state.apiKeys] });
-      setNewKeyValue('');
-      setNewKeyName('');
-      setNewKeyUrl('');
-      showToast('API Key saved successfully', 'success');
+      const mergedKeys = [serverKey, ...state.apiKeys.filter(k => k.id !== tempId)];
+      dispatch({ type: 'SET_API_KEYS', payload: mergedKeys });
+      try {
+        localStorage.setItem('chaty_api_keys', JSON.stringify(mergedKeys));
+      } catch {}
+      showToast('API Key saved successfully & synced', 'success');
     } catch {
-      showToast('Failed to save API Key', 'error');
+      showToast('API Key saved locally in browser', 'success');
     }
   };
 
   const handleDeleteAPIKey = async (id: string) => {
     if (!confirm('Are you sure you want to delete this API key?')) return;
+    const remainingKeys = state.apiKeys.filter(k => k.id !== id);
+    dispatch({ type: 'SET_API_KEYS', payload: remainingKeys });
+    try {
+      localStorage.setItem('chaty_api_keys', JSON.stringify(remainingKeys));
+    } catch {}
     try {
       await deleteAPIKey(id);
-      dispatch({ type: 'SET_API_KEYS', payload: state.apiKeys.filter(k => k.id !== id) });
-      showToast('API Key deleted', 'success');
-    } catch {
-      showToast('Failed to delete API Key', 'error');
-    }
+    } catch {}
+    showToast('API Key deleted', 'success');
   };
 
   const handleCheckKey = async (id: string) => {

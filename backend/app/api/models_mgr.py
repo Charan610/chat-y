@@ -11,7 +11,7 @@ import os
 from app.database import get_db
 from app.models import APIKey, ModelConfig
 from app.schemas import (
-    APIKeyCreate, APIKeyResponse,
+    APIKeyCreate, APIKeyUpdate, APIKeyResponse,
     ModelConfigCreate, ModelConfigUpdate, ModelConfigResponse
 )
 
@@ -153,10 +153,31 @@ async def create_api_key(data: APIKeyCreate, db: AsyncSession = Depends(get_db))
         key_name=data.key_name,
         api_key=data.api_key,
         base_url=data.base_url,
+        is_active=data.is_active,
         is_default=data.is_default,
         extra_params=data.extra_params,
     )
     db.add(key)
+    await db.commit()
+    await db.refresh(key)
+    return APIKeyResponse.from_orm_mask(key)
+
+
+@router.patch("/api/apikeys/{key_id}", response_model=APIKeyResponse)
+async def update_api_key(
+    key_id: str,
+    data: APIKeyUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(APIKey).where(APIKey.id == key_id))
+    key = result.scalar_one_or_none()
+    if not key:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for k, value in update_data.items():
+        setattr(key, k, value)
+
     await db.commit()
     await db.refresh(key)
     return APIKeyResponse.from_orm_mask(key)

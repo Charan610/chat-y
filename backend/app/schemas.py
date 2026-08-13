@@ -92,8 +92,17 @@ class APIKeyCreate(BaseModel):
     key_name: str
     api_key: str
     base_url: Optional[str] = None
+    is_active: bool = True
     is_default: bool = False
     extra_params: str = "{}"
+
+class APIKeyUpdate(BaseModel):
+    provider: Optional[str] = None
+    key_name: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
 
 class APIKeyResponse(BaseModel):
     id: str

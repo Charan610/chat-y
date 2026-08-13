@@ -248,6 +248,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Load initial data
   useEffect(() => {
     const load = async () => {
+      // 1. Initial load from localStorage for client persistence
+      try {
+        const storedKeys = localStorage.getItem('chaty_api_keys');
+        if (storedKeys) {
+          const parsed = JSON.parse(storedKeys);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            dispatch({ type: 'SET_API_KEYS', payload: parsed });
+          }
+        }
+      } catch {}
+
       try {
         const [convs, mems, keys, models, providers] = await Promise.allSettled([
           fetchConversations(),
@@ -258,7 +269,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ]);
         if (convs.status === 'fulfilled') dispatch({ type: 'SET_CONVERSATIONS', payload: convs.value });
         if (mems.status === 'fulfilled') dispatch({ type: 'SET_MEMORIES', payload: mems.value });
-        if (keys.status === 'fulfilled') dispatch({ type: 'SET_API_KEYS', payload: keys.value });
+        if (keys.status === 'fulfilled' && keys.value && keys.value.length > 0) {
+          dispatch({ type: 'SET_API_KEYS', payload: keys.value });
+          try {
+            localStorage.setItem('chaty_api_keys', JSON.stringify(keys.value));
+          } catch {}
+        }
         if (models.status === 'fulfilled') dispatch({ type: 'SET_MODELS', payload: models.value });
         if (providers.status === 'fulfilled') dispatch({ type: 'SET_PROVIDERS', payload: providers.value });
       } catch {
