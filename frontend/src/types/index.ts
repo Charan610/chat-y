@@ -122,6 +122,7 @@ export interface ChatRequest {
   model?: string;
   web_search?: boolean;
   file_ids?: string[];
+  api_keys?: Record<string, string>;
 }
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
