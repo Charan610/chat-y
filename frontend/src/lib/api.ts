@@ -188,8 +188,11 @@ export async function streamDirectCloud(
       conversation_id: convId,
     });
 
+    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const isTemporalQuery = req.web_search || /\b(today|latest|recent|news|current|who won|score|weather|this week|2026|right now|now|happened|price|stock)\b/i.test(req.message);
+
     let extraPrompt = '';
-    if (req.web_search) {
+    if (isTemporalQuery) {
       onMetadata({ search_status: 'searching' });
       try {
         const searchResults = await fetchWebSearch(req.message);
@@ -198,16 +201,26 @@ export async function streamDirectCloud(
           const formattedResults = searchResults
             .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`)
             .join('\n\n');
-          extraPrompt = `\n\n--- REAL-TIME WEB SEARCH RESULTS ---\n${formattedResults}\n\nINSTRUCTIONS: Answer using the real-time web search results provided above. Always cite sources as markdown links like [1](URL), [2](URL).`;
+          extraPrompt = `\n\n--- REAL-TIME WEB SEARCH RESULTS ---\n${formattedResults}\n\nINSTRUCTIONS: Answer the user's question using the real-time web search results above. Cite sources using markdown links like [1](URL), [2](URL).`;
         }
       } catch {
         onMetadata({ search_status: 'done' });
       }
     }
 
+    const systemMessage = {
+      role: 'system',
+      content: `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant. Always provide accurate, current, and real-time answers.`
+    };
+
+    const userMessage = {
+      role: 'user',
+      content: req.message + extraPrompt
+    };
+
     const bodyData = {
       model: rawModelId,
-      messages: [{ role: 'user', content: req.message + extraPrompt }],
+      messages: [systemMessage, userMessage],
       stream: true,
       temperature: 0.7,
     };

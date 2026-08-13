@@ -319,25 +319,34 @@ async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             )
             history = history_result.scalars().all()
 
-            # Build messages list
+            # Build messages list with current date context
+            today_str = datetime.now(timezone.utc).strftime("%A, %B %d, %Y")
+            date_system_prompt = f"Current Date: {today_str}. You are Chat-Y, an up-to-date, intelligent AI workspace assistant. Always provide accurate, real-time answers."
+
             messages = []
             if conv.system_prompt:
-                messages.append({"role": "system", "content": conv.system_prompt})
+                messages.append({"role": "system", "content": f"{conv.system_prompt}\n{date_system_prompt}"})
             elif request.system_prompt:
-                messages.append({"role": "system", "content": request.system_prompt})
+                messages.append({"role": "system", "content": f"{request.system_prompt}\n{date_system_prompt}"})
+            else:
+                messages.append({"role": "system", "content": date_system_prompt})
 
             for h in history:
                 messages.append({"role": h.role, "content": h.content})
 
-            # Handle web search
+            # Handle web search (auto-trigger if query mentions temporal terms or request.web_search is True)
+            import re
+            is_temporal = request.web_search or bool(re.search(r'\b(today|latest|recent|news|current|who won|score|weather|this week|2026|right now|now|happened|price|stock)\b', request.message, re.I))
             user_content = request.message
-            if request.web_search:
+
+            if is_temporal:
                 try:
                     search_results = await search_service.search(request.message)
                     if search_results:
-                        search_context = "\n\nWeb Search Results:\n"
+                        search_context = "\n\nReal-Time Web Search Results:\n"
                         for i, r in enumerate(search_results, 1):
-                            search_context += f"{i}. [{r['title']}]({r['url']})\n{r['snippet']}\n\n"
+                            search_context += f"[{i}] [{r['title']}]({r['url']})\nSnippet: {r['snippet']}\n\n"
+                        search_context += "INSTRUCTIONS: Answer using the real-time web search results above. Cite sources as markdown links like [1](URL)."
                         user_content = request.message + search_context
                 except Exception:
                     pass  # Continue without search results
