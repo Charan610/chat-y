@@ -37,13 +37,23 @@ export const apiClient = {
   delete: <T>(path: string) => request<T>('DELETE', path),
 };
 
-// ── Conversations ────────────────────────────────────────────────────────────
-export async function fetchConversations(): Promise<Conversation[]> {
-  return apiClient.get<Conversation[]>('/api/conversations');
+// ── Users ───────────────────────────────────────────────────────────────────
+export async function syncUser(user: { id: string; email: string; name: string; picture?: string }): Promise<void> {
+  return apiClient.post('/api/users', user);
 }
 
-export async function createConversation(data: { title?: string; model?: string }): Promise<Conversation> {
+// ── Conversations ────────────────────────────────────────────────────────────
+export async function fetchConversations(userId?: string): Promise<Conversation[]> {
+  const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+  return apiClient.get<Conversation[]>(`/api/conversations${query}`);
+}
+
+export async function createConversation(data: { title?: string; model?: string; user_id?: string }): Promise<Conversation> {
   return apiClient.post<Conversation>('/api/conversations', data);
+}
+
+export async function importConversations(userId: string, chats: any[]): Promise<{ imported: number }> {
+  return apiClient.post<{ imported: number }>('/api/conversations/import', { user_id: userId, chats });
 }
 
 export async function updateConversation(id: string, data: Partial<Conversation>): Promise<Conversation> {

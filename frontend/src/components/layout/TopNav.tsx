@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { ModelPickerModal } from '@/components/modals/ModelPickerModal';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
 const PROVIDER_BADGES: Record<string, { label: string; color: string }> = {
   webllm: { label: '✦ LOCAL', color: '#6b9a78' },
@@ -267,6 +268,9 @@ export function TopNav() {
             </span>
             <ChevronDown size={11} style={{ flexShrink: 0, opacity: 0.6 }} />
           </button>
+
+          {/* Google Auth & User Session */}
+          <GoogleAuthButton />
 
           {/* Settings button */}
           <button

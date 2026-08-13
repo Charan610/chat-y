@@ -8,6 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import type {
   Conversation,
   Message,
@@ -29,12 +30,21 @@ import {
   fetchModels,
   fetchProviders,
   streamChat,
+  syncUser,
+  importConversations,
 } from '@/lib/api';
 import type { WebLLMProgress, WebLLMStatus, LocalModelId } from '@/lib/webllm';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 export type ChatMode = 'local' | 'cloud';
+
+export interface UserSession {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+}
 
 interface AppState {
   conversations: Conversation[];
@@ -223,6 +233,7 @@ function reducer(state: AppState, action: Action): AppState {
 
 interface AppContextValue {
   state: AppState;
+  user: UserSession | null;
   dispatch: React.Dispatch<Action>;
   setActiveConversation: (id: string | null) => Promise<void>;
   sendMessage: (content: string, fileIds?: string[]) => Promise<void>;
@@ -233,6 +244,9 @@ interface AppContextValue {
   togglePin: (id: string) => Promise<void>;
   showToast: (message: string, type?: Toast['type']) => void;
   loadWebLLM: (modelId?: string) => Promise<void>;
+  handleGoogleSignIn: (user: UserSession) => Promise<void>;
+  handleSignOut: () => void;
+  importLocalChatsToAccount: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -247,9 +261,23 @@ export function useApp() {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [user, setUser] = React.useState<UserSession | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // Use a ref to track streaming content for local mode since dispatch is async
   const streamContentRef = useRef('');
+
+  // Initial user session load
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('chaty_user_session');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.id) {
+          setUser(parsed);
+          syncUser(parsed).catch(() => {});
+        }
+      }
+    } catch {}
+  }, []);
 
   // Load initial data
   useEffect(() => {
@@ -643,23 +671,72 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.conversations, showToast]);
 
+  const handleGoogleSignIn = useCallback(async (userSession: UserSession) => {
+    setUser(userSession);
+    try {
+      localStorage.setItem('chaty_user_session', JSON.stringify(userSession));
+      await syncUser(userSession);
+      const convs = await fetchConversations(userSession.id);
+      dispatch({ type: 'SET_CONVERSATIONS', payload: convs });
+      showToast(`Welcome, ${userSession.name}!`, 'success');
+    } catch {
+      showToast(`Signed in as ${userSession.name}`, 'info');
+    }
+  }, [showToast]);
+
+  const handleSignOut = useCallback(() => {
+    setUser(null);
+    try {
+      localStorage.removeItem('chaty_user_session');
+    } catch {}
+    dispatch({ type: 'SET_CONVERSATIONS', payload: [] });
+    dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: null });
+    dispatch({ type: 'SET_MESSAGES', payload: [] });
+    showToast('Signed out of Google account', 'info');
+  }, [showToast]);
+
+  const importLocalChatsToAccount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const localChats = state.conversations.map(c => ({
+        title: c.title,
+        model: c.model,
+        messages: state.messages.filter(m => m.conversation_id === c.id),
+      }));
+      const res = await importConversations(user.id, localChats);
+      const convs = await fetchConversations(user.id);
+      dispatch({ type: 'SET_CONVERSATIONS', payload: convs });
+      showToast(`Successfully imported ${res.imported || localChats.length} chats to account!`, 'success');
+    } catch {
+      showToast('Failed to import local chats', 'error');
+    }
+  }, [user, state.conversations, state.messages, showToast]);
+
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '1082538183921-chatydefaultclientid.apps.googleusercontent.com';
+
   return (
-    <AppContext.Provider
-      value={{
-        state,
-        dispatch,
-        setActiveConversation,
-        sendMessage,
-        stopStreaming,
-        newConversation,
-        deleteConv,
-        renameConv,
-        togglePin,
-        showToast,
-        loadWebLLM,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AppContext.Provider
+        value={{
+          state,
+          user,
+          dispatch,
+          setActiveConversation,
+          sendMessage,
+          stopStreaming,
+          newConversation,
+          deleteConv,
+          renameConv,
+          togglePin,
+          showToast,
+          loadWebLLM,
+          handleGoogleSignIn,
+          handleSignOut,
+          importLocalChatsToAccount,
+        }}
+      >
+        {children}
+      </AppContext.Provider>
+    </GoogleOAuthProvider>
   );
 }

@@ -8,10 +8,22 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True)  # Google sub ID
+    email = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    picture = Column(String, nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
     title = Column(String, default="New Conversation")
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
@@ -30,6 +42,7 @@ class Message(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     conversation_id = Column(String, ForeignKey("conversations.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
     role = Column(String, nullable=False)  # user/assistant/system
     content = Column(Text, nullable=False)
     model = Column(String, nullable=True)

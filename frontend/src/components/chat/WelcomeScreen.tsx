@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
 const QUICK_PROMPTS = [
   { icon: Cpu, label: 'Explain quantum computing', prompt: 'Explain quantum computing in simple terms with a real-world example.' },
@@ -32,7 +33,7 @@ const PROVIDERS = [
 ];
 
 export function WelcomeScreen() {
-  const { state, newConversation, dispatch } = useApp();
+  const { state, user, newConversation, dispatch } = useApp();
   const { conversations, activeModel } = state;
 
   const recentConvs = conversations.slice(0, 3);
@@ -96,6 +97,16 @@ export function WelcomeScreen() {
               Your AI Workspace
             </p>
           </div>
+
+          {!user && (
+            <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-surface border border-line text-xs w-full max-w-[420px] text-fg-3 shadow-sm">
+              <div className="flex items-center gap-2 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                <span className="truncate">Sign in with Google to save your chats across devices.</span>
+              </div>
+              <GoogleAuthButton />
+            </div>
+          )}
 
           {/* Start New Chat Button */}
           <button

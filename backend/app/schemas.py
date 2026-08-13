@@ -22,6 +22,24 @@ class FolderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 # ---------------------------------------------------------------------------
+# User
+# ---------------------------------------------------------------------------
+
+class UserCreate(BaseModel):
+    id: str  # Google sub ID
+    email: str
+    name: str
+    picture: Optional[str] = None
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+# ---------------------------------------------------------------------------
 # Conversation
 # ---------------------------------------------------------------------------
 
@@ -30,6 +48,7 @@ class ConversationCreate(BaseModel):
     model: str = "groq/llama-3.3-70b-versatile"
     system_prompt: str = ""
     folder_id: Optional[str] = None
+    user_id: Optional[str] = None
 
 class ConversationUpdate(BaseModel):
     title: Optional[str] = None
@@ -42,6 +61,7 @@ class ConversationUpdate(BaseModel):
 
 class ConversationResponse(BaseModel):
     id: str
+    user_id: Optional[str] = None
     title: str
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -64,10 +84,12 @@ class MessageCreate(BaseModel):
     content: str
     model: Optional[str] = None
     metadata_json: Optional[str] = "{}"
+    user_id: Optional[str] = None
 
 class MessageResponse(BaseModel):
     id: str
     conversation_id: str
+    user_id: Optional[str] = None
     role: str
     content: str
     model: Optional[str] = None
@@ -212,6 +234,7 @@ class MemoryResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
+    user_id: Optional[str] = None
     message: str
     model: str = "groq/llama-3.3-70b-versatile"
     files: List[str] = []          # list of uploaded file IDs
@@ -221,6 +244,15 @@ class ChatRequest(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 4096
     api_keys: Optional[Dict[str, str]] = None
+
+class ImportChatPayload(BaseModel):
+    title: str = "Imported Chat"
+    model: Optional[str] = "groq/llama-3.3-70b-versatile"
+    messages: List[Dict[str, Any]] = []
+
+class ImportChatsRequest(BaseModel):
+    user_id: str
+    chats: List[ImportChatPayload]
 
 class ChatStreamChunk(BaseModel):
     type: str                              # content | metadata | done | error

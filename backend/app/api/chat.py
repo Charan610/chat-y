@@ -10,10 +10,11 @@ from sqlalchemy import select, update, delete, func, or_
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Conversation, Message
+from app.models import Conversation, Message, User
 from app.schemas import (
     ConversationCreate, ConversationUpdate, ConversationResponse,
-    MessageCreate, MessageResponse, ChatRequest
+    MessageCreate, MessageResponse, ChatRequest, UserCreate, UserResponse,
+    ImportChatsRequest
 )
 from app.services.llm import LLMService
 from app.services.search import SearchService
@@ -23,6 +24,28 @@ router = APIRouter()
 llm_service = LLMService()
 search_service = SearchService()
 
+# ---- Users ----
+
+@router.post("/api/users", response_model=UserResponse)
+async def sync_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.id == data.id))
+    user = result.scalar_one_or_none()
+    if user:
+        user.name = data.name
+        user.email = data.email
+        if data.picture:
+            user.picture = data.picture
+    else:
+        user = User(
+            id=data.id,
+            email=data.email,
+            name=data.name,
+            picture=data.picture,
+        )
+        db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 # ---- Conversations ----
 
@@ -30,6 +53,7 @@ search_service = SearchService()
 async def create_conversation(data: ConversationCreate, db: AsyncSession = Depends(get_db)):
     conv = Conversation(
         id=str(uuid.uuid4()),
+        user_id=data.user_id,
         title=data.title,
         model=data.model,
         system_prompt=data.system_prompt,
@@ -46,9 +70,12 @@ async def list_conversations(
     search: Optional[str] = Query(None),
     folder_id: Optional[str] = Query(None),
     is_archived: Optional[bool] = Query(None),
+    user_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(Conversation)
+    if user_id:
+        query = query.where(Conversation.user_id == user_id)
     if search:
         query = query.where(Conversation.title.ilike(f"%{search}%"))
     if folder_id:
@@ -60,6 +87,38 @@ async def list_conversations(
     query = query.order_by(Conversation.is_pinned.desc(), Conversation.updated_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.post("/api/conversations/import")
+async def import_conversations(data: ImportChatsRequest, db: AsyncSession = Depends(get_db)):
+    imported_count = 0
+    for chat in data.chats:
+        conv_id = str(uuid.uuid4())
+        conv = Conversation(
+            id=conv_id,
+            user_id=data.user_id,
+            title=chat.title or "Imported Chat",
+            model=chat.model or "groq/llama-3.3-70b-versatile",
+        )
+        db.add(conv)
+        for msg in chat.messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if not content:
+                continue
+            db_msg = Message(
+                id=str(uuid.uuid4()),
+                conversation_id=conv_id,
+                user_id=data.user_id,
+                role=role,
+                content=content,
+                model=chat.model,
+                provider=msg.get("provider", "imported"),
+            )
+            db.add(db_msg)
+        imported_count += 1
+    await db.commit()
+    return {"imported": imported_count}
 
 
 @router.get("/api/conversations/{conversation_id}", response_model=ConversationResponse)
