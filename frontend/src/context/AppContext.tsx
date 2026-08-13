@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import { SessionProvider } from 'next-auth/react';
 import type {
   Conversation,
   Message,
@@ -718,7 +718,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     '';
 
   return (
-    <GoogleOAuthProvider clientId={googleClientId}>
+    <SessionProvider>
       <AppContext.Provider
         value={{
           state,
@@ -740,6 +740,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       >
         {children}
       </AppContext.Provider>
-    </GoogleOAuthProvider>
+    </SessionProvider>
   );
 }
