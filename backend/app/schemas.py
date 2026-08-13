@@ -108,6 +108,7 @@ class APIKeyResponse(BaseModel):
     id: str
     provider: str
     key_name: str
+    api_key: Optional[str] = None
     api_key_masked: str  # masked version shown to client
     base_url: Optional[str] = None
     is_active: bool
@@ -117,8 +118,8 @@ class APIKeyResponse(BaseModel):
 
     @classmethod
     def from_orm_mask(cls, obj) -> "APIKeyResponse":
-        """Build response with a masked API key so the raw key never leaves the server."""
-        key = obj.api_key
+        """Build response with both api_key and masked version."""
+        key = obj.api_key or ""
         if len(key) > 8:
             masked = key[:4] + "*" * (len(key) - 8) + key[-4:]
         else:
@@ -127,6 +128,7 @@ class APIKeyResponse(BaseModel):
             id=obj.id,
             provider=obj.provider,
             key_name=obj.key_name,
+            api_key=key,
             api_key_masked=masked,
             base_url=obj.base_url,
             is_active=obj.is_active,
@@ -218,6 +220,7 @@ class ChatRequest(BaseModel):
     system_prompt: Optional[str] = None
     temperature: float = 0.7
     max_tokens: int = 4096
+    api_keys: Optional[Dict[str, str]] = None
 
 class ChatStreamChunk(BaseModel):
     type: str                              # content | metadata | done | error

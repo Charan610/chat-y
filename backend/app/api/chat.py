@@ -310,6 +310,11 @@ async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             api_keys = keys_result.scalars().all()
             api_keys_dict = {k.provider: {"api_key": k.api_key, "base_url": k.base_url} for k in api_keys}
 
+            if request.api_keys:
+                for prov, key_val in request.api_keys.items():
+                    if key_val and prov not in api_keys_dict:
+                        api_keys_dict[prov] = {"api_key": key_val, "base_url": None}
+
             options = {
                 "temperature": request.temperature,
                 "max_tokens": request.max_tokens,

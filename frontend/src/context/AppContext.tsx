@@ -269,10 +269,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ]);
         if (convs.status === 'fulfilled') dispatch({ type: 'SET_CONVERSATIONS', payload: convs.value });
         if (mems.status === 'fulfilled') dispatch({ type: 'SET_MEMORIES', payload: mems.value });
-        if (keys.status === 'fulfilled' && keys.value && keys.value.length > 0) {
-          dispatch({ type: 'SET_API_KEYS', payload: keys.value });
+        if (keys.status === 'fulfilled' && keys.value) {
+          let localKeys: APIKey[] = [];
           try {
-            localStorage.setItem('chaty_api_keys', JSON.stringify(keys.value));
+            const raw = localStorage.getItem('chaty_api_keys');
+            if (raw) localKeys = JSON.parse(raw);
+          } catch {}
+
+          const merged = keys.value.map(serverK => {
+            const match = localKeys.find(l => l.id === serverK.id || l.provider === serverK.provider);
+            return {
+              ...serverK,
+              api_key: serverK.api_key || match?.api_key || '',
+            };
+          });
+
+          for (const localK of localKeys) {
+            if (!merged.some(m => m.id === localK.id)) {
+              merged.push(localK);
+            }
+          }
+
+          dispatch({ type: 'SET_API_KEYS', payload: merged });
+          try {
+            localStorage.setItem('chaty_api_keys', JSON.stringify(merged));
           } catch {}
         }
         if (models.status === 'fulfilled') dispatch({ type: 'SET_MODELS', payload: models.value });
