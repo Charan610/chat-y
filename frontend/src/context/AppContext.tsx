@@ -82,7 +82,7 @@ const initialState: AppState = {
   isLoadingMessages: false,
   toasts: [],
   // ── WebLLM defaults ──
-  chatMode: 'local',
+  chatMode: 'cloud',
   webllmStatus: 'idle',
   webllmProgress: { phase: 'idle', progress: 0, text: '' },
   webllmModelId: 'SmolLM-360M-Instruct-q4f16_1-MLC',
@@ -167,8 +167,14 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, streamingMessageId: action.payload };
     case 'CLEAR_STREAM':
       return { ...state, streamingContent: '', streamingMessageId: null };
-    case 'SET_MODEL':
-      return { ...state, activeModel: action.payload };
+    case 'SET_MODEL': {
+      const isLocal = action.payload.startsWith('webllm/');
+      return {
+        ...state,
+        activeModel: action.payload,
+        chatMode: isLocal ? 'local' : 'cloud',
+      };
+    }
     case 'TOGGLE_SIDEBAR':
       return { ...state, sidebarOpen: !state.sidebarOpen };
     case 'SET_SIDEBAR':
@@ -390,7 +396,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     abortRef.current = ctrl;
 
     // ─── LOCAL MODE (WebLLM) ───
-    const isLocalModel = state.chatMode === 'local' || state.activeModel.startsWith('webllm/');
+    const isLocalModel = state.activeModel.startsWith('webllm/');
     if (isLocalModel) {
       const { chatWithWebLLM, isWebGPUSupported, initWebLLMEngine, getEngineStatus } = await import('@/lib/webllm');
 

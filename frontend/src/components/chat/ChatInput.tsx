@@ -30,6 +30,7 @@ export function ChatInput({
   const [isListening, setIsListening] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const baseValueRef = useRef<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +58,9 @@ export function ChatInput({
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
+      // Record starting value before speech input
+      baseValueRef.current = value;
+
       recognition.onstart = () => {
         setIsListening(true);
         showToast('Listening... Speak into microphone', 'info');
@@ -64,15 +68,23 @@ export function ChatInput({
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal) {
+            finalTranscript += res[0].transcript;
+          } else {
+            interimTranscript += res[0].transcript;
+          }
         }
-        if (transcript) {
-          setValue(prev => {
-            const separator = prev && !prev.endsWith(' ') ? ' ' : '';
-            return prev + separator + transcript;
-          });
+
+        const currentSpeech = (finalTranscript + ' ' + interimTranscript).trim();
+        if (currentSpeech) {
+          const base = baseValueRef.current;
+          const separator = base && !base.endsWith(' ') ? ' ' : '';
+          setValue(base + separator + currentSpeech);
         }
       };
 
@@ -94,7 +106,7 @@ export function ChatInput({
       showToast('Failed to start voice input', 'error');
       setIsListening(false);
     }
-  }, [isListening, showToast]);
+  }, [isListening, value, showToast]);
 
   useEffect(() => {
     return () => {
