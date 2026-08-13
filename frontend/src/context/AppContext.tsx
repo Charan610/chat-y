@@ -712,7 +712,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, state.conversations, state.messages, showToast]);
 
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '1082538183921-chatydefaultclientid.apps.googleusercontent.com';
+  const googleClientId =
+    (typeof window !== 'undefined' && localStorage.getItem('chaty_google_client_id')) ||
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+    '';
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
