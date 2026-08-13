@@ -123,13 +123,18 @@ export async function streamChat(
 // ── File Upload ───────────────────────────────────────────────────────────────
 export async function uploadFile(file: File): Promise<UploadedFile> {
   const form = new FormData();
+  form.append('files', file);
   form.append('file', file);
   const res = await fetch(`${BASE_URL}/api/files/upload`, {
     method: 'POST',
     body: form,
   });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  return res.json();
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(errText || `Upload failed: ${res.status}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data[0] : data;
 }
 
 export async function fetchFiles(): Promise<UploadedFile[]> {

@@ -12,13 +12,13 @@ You may be able to resolve this warning by setting `model_config['protected_name
   warnings.warn(
 Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
 Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
-INFO:     Started server process [3023]
+INFO:     Started server process [3919]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8000): address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
 ✓ Chat-Y backend started
   Upload dir : ./uploads
   Chroma path: ./chroma_db
-INFO:     127.0.0.1:49963 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49965 - "POST /api/apikeys HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49967 - "GET /health HTTP/1.1" 200 OK
+Chat-Y backend shutting down

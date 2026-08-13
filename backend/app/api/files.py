@@ -26,24 +26,32 @@ TEXT_PREVIEW_EXTENSIONS = {".txt", ".md", ".py", ".js", ".ts", ".jsx", ".tsx",
 
 @router.post("/api/files/upload", response_model=List[UploadedFileResponse])
 async def upload_files(
-    files: List[UploadFile] = File(...),
+    files: Optional[List[UploadFile]] = File(None),
+    file: Optional[UploadFile] = File(None),
     conversation_id: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    file_list = []
+    if files:
+        file_list.extend(files)
+    if file:
+        file_list.append(file)
+    if not file_list:
+        raise HTTPException(status_code=400, detail="No file provided")
+
     uploaded = []
-    
-    for file in files:
+    for item in file_list:
         # Check size
-        content = await file.read()
+        content = await item.read()
         if len(content) > settings.MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=413,
-                detail=f"File {file.filename} exceeds maximum size of {settings.MAX_FILE_SIZE // (1024*1024)}MB"
+                detail=f"File {item.filename} exceeds maximum size of {settings.MAX_FILE_SIZE // (1024*1024)}MB"
             )
         
         file_id = str(uuid.uuid4())
-        original_name = file.filename or "unknown"
+        original_name = item.filename or "unknown"
         ext = Path(original_name).suffix.lower()
         filename = f"{file_id}{ext}"
         file_path = os.path.join(settings.UPLOAD_DIR, filename)
@@ -51,7 +59,7 @@ async def upload_files(
         async with aiofiles.open(file_path, "wb") as f:
             await f.write(content)
         
-        mime_type = file.content_type or mimetypes.guess_type(original_name)[0] or "application/octet-stream"
+        mime_type = item.content_type or mimetypes.guess_type(original_name)[0] or "application/octet-stream"
         file_type = _get_file_type(ext, mime_type)
         
         db_file = UploadedFile(
