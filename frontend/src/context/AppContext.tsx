@@ -564,14 +564,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Sync to server to register conversation model & ID
     try {
-      const conv = await createConversation({ model: state.activeModel });
+      const modelToUse = state.activeModel || 'groq/llama-3.3-70b-versatile';
+      const conv = await createConversation({ title: 'New Conversation', model: modelToUse });
       dispatch({ type: 'ADD_CONVERSATION', payload: conv });
       dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conv.id });
       if (prompt) {
         setTimeout(() => sendMessage(prompt, fileIds), 50);
       }
     } catch {
-      // If server is unreachable or offline, the local conversation is already active and ready to chat
+      // Create local fallback conversation in state if server call fails
+      const fallbackConv: Conversation = {
+        id: tempId,
+        title: 'New Conversation',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_pinned: false,
+        is_favorite: false,
+        is_archived: false,
+        model: state.activeModel || 'groq/llama-3.3-70b-versatile',
+        message_count: 0,
+        total_tokens: 0,
+      };
+      dispatch({ type: 'ADD_CONVERSATION', payload: fallbackConv });
       if (prompt) {
         setTimeout(() => sendMessage(prompt, fileIds), 50);
       }

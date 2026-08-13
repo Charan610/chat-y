@@ -21,4 +21,4 @@ INFO:     Application shutdown complete.
 ✓ Chat-Y backend started
   Upload dir : ./uploads
   Chroma path: ./chroma_db
-Chat-Y backend shutting down
+Chat-Y baINFO:     127.0.0.1:50365 - "POST /api/conversations HTTP/1.1" 200 OK
