@@ -136,18 +136,23 @@ export function SettingsModal() {
   // --- API Key actions ---
   const handleAddAPIKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKeyValue.trim()) {
+    const rawKey = newKeyValue.trim();
+    if (!rawKey) {
       showToast('API Key value is required', 'error');
       return;
     }
 
     const tempId = `key-${Date.now()}`;
+    const keyName = newKeyName.trim() || `${newKeyProvider.toUpperCase()} Key`;
+    const baseUrl = newKeyUrl.trim() || undefined;
+
     const newKeyObj: APIKey = {
       id: tempId,
       provider: newKeyProvider,
-      key_name: newKeyName.trim() || `${newKeyProvider.toUpperCase()} Key`,
-      api_key: newKeyValue.trim(),
-      base_url: newKeyUrl.trim() || undefined,
+      key_name: keyName,
+      api_key: rawKey,
+      api_key_masked: rawKey.length > 8 ? rawKey.slice(0, 4) + '****' + rawKey.slice(-4) : '****',
+      base_url: baseUrl,
       is_active: true,
       is_default: true,
     };
@@ -167,18 +172,24 @@ export function SettingsModal() {
     try {
       const serverKey = await createAPIKey({
         provider: newKeyProvider,
-        key_name: newKeyObj.key_name,
-        api_key: newKeyObj.api_key,
-        base_url: newKeyObj.base_url,
+        key_name: keyName,
+        api_key: rawKey,
+        base_url: baseUrl,
         is_active: true,
         is_default: true,
       });
-      const mergedKeys = [serverKey, ...state.apiKeys.filter(k => k.id !== tempId)];
+
+      const fullServerKey: APIKey = {
+        ...serverKey,
+        api_key: rawKey,
+      };
+
+      const mergedKeys = [fullServerKey, ...state.apiKeys.filter(k => k.id !== tempId && k.id !== fullServerKey.id)];
       dispatch({ type: 'SET_API_KEYS', payload: mergedKeys });
       try {
         localStorage.setItem('chaty_api_keys', JSON.stringify(mergedKeys));
       } catch {}
-      showToast('API Key saved successfully & synced', 'success');
+      showToast('API Key saved successfully', 'success');
     } catch {
       showToast('API Key saved locally in browser', 'success');
     }
@@ -700,7 +711,7 @@ export function SettingsModal() {
                             <div className="text-[10px] font-mono text-fg-4 flex items-center gap-2 truncate">
                               <span>Key:</span>
                               <span className="text-fg-3">
-                                {showRaw ? key.api_key : '••••••••••••••••••••••••'}
+                                {showRaw ? (key.api_key || key.api_key_masked) : (key.api_key_masked || '••••••••••••••••••••••••')}
                               </span>
                             </div>
 

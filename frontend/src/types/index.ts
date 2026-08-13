@@ -38,6 +38,7 @@ export interface APIKey {
   provider: string;
   key_name: string;
   api_key: string;
+  api_key_masked?: string;
   base_url?: string;
   is_active: boolean;
   is_default: boolean;
