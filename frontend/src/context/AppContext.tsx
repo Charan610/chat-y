@@ -550,28 +550,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state.isStreaming, state.activeConversationId, state.activeModel, state.webSearchEnabled, state.chatMode, state.webllmStatus, state.webllmModelId, state.messages, showToast]);
 
   const newConversation = useCallback(async (prompt?: string, fileIds?: string[]) => {
-    // In local mode, just clear messages and start fresh locally
+    // 1. Immediately reset active conversation ID & clear messages in UI for zero lag
+    const tempId = `conv-${Date.now()}`;
+    dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: tempId });
+    dispatch({ type: 'SET_MESSAGES', payload: [] });
+
     if (state.chatMode === 'local') {
-      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: `local-${Date.now()}` });
-      dispatch({ type: 'SET_MESSAGES', payload: [] });
       if (prompt) {
         setTimeout(() => sendMessage(prompt, fileIds), 50);
       }
       return;
     }
+
+    // 2. Sync to server to register conversation model & ID
     try {
       const conv = await createConversation({ model: state.activeModel });
       dispatch({ type: 'ADD_CONVERSATION', payload: conv });
       dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conv.id });
-      dispatch({ type: 'SET_MESSAGES', payload: [] });
       if (prompt) {
-        // Small delay to ensure state is set
         setTimeout(() => sendMessage(prompt, fileIds), 50);
       }
     } catch {
-      showToast('Failed to create conversation', 'error');
+      // If server is unreachable or offline, the local conversation is already active and ready to chat
+      if (prompt) {
+        setTimeout(() => sendMessage(prompt, fileIds), 50);
+      }
     }
-  }, [state.activeModel, state.chatMode, sendMessage, showToast]);
+  }, [state.activeModel, state.chatMode, sendMessage]);
 
   const deleteConv = useCallback(async (id: string) => {
     try {
