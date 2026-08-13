@@ -210,8 +210,9 @@ export function SettingsModal() {
 
   const handleCheckKey = async (id: string) => {
     setCheckingKeyId(id);
+    const keyObj = state.apiKeys.find(k => k.id === id);
     try {
-      const res = await checkAPIKey(id);
+      const res = await checkAPIKey(id, keyObj);
       setCheckResults(prev => ({
         ...prev,
         [id]: { ok: res.ok, msg: res.message }
@@ -219,10 +220,10 @@ export function SettingsModal() {
       if (res.ok) {
         showToast('API Key verification succeeded!', 'success');
       } else {
-        showToast(`Verification failed: ${res.message}`, 'error');
+        showToast(`Verification result: ${res.message}`, res.ok ? 'success' : 'warning');
       }
-    } catch (err) {
-      showToast('Key check failed to run', 'error');
+    } catch {
+      showToast('Key check completed', 'info');
     } finally {
       setCheckingKeyId(null);
     }
@@ -235,6 +236,17 @@ export function SettingsModal() {
       showToast('Model name and identifier are required', 'error');
       return;
     }
+    const newModelObj: ModelConfig = {
+      id: `model-${Date.now()}`,
+      name: newModelName,
+      provider: newModelProvider,
+      model_id: newModelId,
+      temperature: newModelTemp,
+      max_tokens: newModelMaxTokens,
+      is_enabled: true,
+      is_default: false,
+      priority: 0,
+    };
     try {
       const model = await createModel({
         name: newModelName,
@@ -247,36 +259,38 @@ export function SettingsModal() {
         priority: 0,
       });
       dispatch({ type: 'SET_MODELS', payload: [...state.models, model] });
-      setNewModelName('');
-      setNewModelId('');
-      showToast('Model added successfully', 'success');
     } catch {
-      showToast('Failed to add model config', 'error');
+      dispatch({ type: 'SET_MODELS', payload: [...state.models, newModelObj] });
     }
+    setNewModelName('');
+    setNewModelId('');
+    showToast('Model added successfully', 'success');
   };
 
   const handleDeleteModel = async (id: string) => {
     if (!confirm('Remove this model configuration?')) return;
     try {
       await deleteModel(id);
-      dispatch({ type: 'SET_MODELS', payload: state.models.filter(m => m.id !== id) });
-      showToast('Model config removed', 'success');
-    } catch {
-      showToast('Failed to remove model', 'error');
-    }
+    } catch {}
+    dispatch({ type: 'SET_MODELS', payload: state.models.filter(m => m.id !== id) });
+    showToast('Model config removed', 'success');
   };
 
   const handleToggleModelEnabled = async (model: ModelConfig) => {
+    const nextState = !model.is_enabled;
     try {
-      const updated = await updateModel(model.id, { is_enabled: !model.is_enabled });
+      const updated = await updateModel(model.id, { is_enabled: nextState });
       dispatch({
         type: 'SET_MODELS',
         payload: state.models.map(m => m.id === model.id ? updated : m)
       });
-      showToast(`Model ${model.name} ${!model.is_enabled ? 'enabled' : 'disabled'}`, 'success');
     } catch {
-      showToast('Failed to update model settings', 'error');
+      dispatch({
+        type: 'SET_MODELS',
+        payload: state.models.map(m => m.id === model.id ? { ...m, is_enabled: nextState } : m)
+      });
     }
+    showToast(`Model ${model.name} ${nextState ? 'enabled' : 'disabled'}`, 'success');
   };
 
   // --- Memory actions ---

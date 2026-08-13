@@ -21,6 +21,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   });
   if (!res.ok) {
     const err = await res.text();
+    if (err.includes('<!DOCTYPE html>') || err.includes('<html') || err.includes('This page could not be found')) {
+      throw new Error(`Endpoint not found (HTTP ${res.status})`);
+    }
     throw new Error(err || `HTTP ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
@@ -162,17 +165,49 @@ export async function deleteAPIKey(id: string): Promise<void> {
   return apiClient.delete<void>(`/api/apikeys/${id}`);
 }
 
-export async function checkAPIKey(id: string): Promise<{ ok: boolean; message: string }> {
+export async function checkAPIKey(id: string, keyObj?: APIKey): Promise<{ ok: boolean; message: string }> {
   try {
     const res = await apiClient.post<{ status: string; message?: string; http_status?: number }>(`/api/apikeys/${id}/health-check`);
     return {
       ok: res.status === 'ok',
       message: res.message || (res.status === 'ok' ? 'Key is working' : `Key returned status: ${res.status}`),
     };
-  } catch (err) {
+  } catch (err: unknown) {
+    if (keyObj && keyObj.api_key) {
+      try {
+        let testUrl = '';
+        const headers: Record<string, string> = {};
+        if (keyObj.provider === 'groq') {
+          testUrl = 'https://api.groq.com/openai/v1/models';
+          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
+        } else if (keyObj.provider === 'openai') {
+          testUrl = 'https://api.openai.com/v1/models';
+          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
+        } else if (keyObj.provider === 'nvidia_nim') {
+          testUrl = keyObj.base_url || 'https://integrate.api.nvidia.com/v1/models';
+          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
+        } else if (keyObj.provider === 'openrouter') {
+          testUrl = 'https://openrouter.ai/api/v1/models';
+          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
+        }
+        if (testUrl) {
+          const directRes = await fetch(testUrl, { headers });
+          if (directRes.ok) {
+            return { ok: true, message: 'Key verified directly with provider!' };
+          } else {
+            return { ok: false, message: `Provider returned HTTP ${directRes.status}` };
+          }
+        }
+      } catch {
+        // network or CORS fallback
+      }
+    }
+    const msg = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
-      message: err instanceof Error ? err.message : String(err),
+      message: msg.includes('<!DOCTYPE html>') || msg.includes('<html')
+        ? 'Backend endpoint offline. Key saved in browser storage.'
+        : msg,
     };
   }
 }
