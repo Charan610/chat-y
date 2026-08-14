@@ -79,7 +79,7 @@ const initialState: AppState = {
   isStreaming: false,
   streamingContent: '',
   streamingMessageId: null,
-  activeModel: 'groq/llama-3.3-70b-versatile',
+  activeModel: 'nvidia_nim/meta/llama-3.1-70b-instruct',
   sidebarOpen: true,
   activePanelFile: null,
   memories: [],
