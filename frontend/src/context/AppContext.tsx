@@ -99,6 +99,56 @@ const initialState: AppState = {
   webllmModelId: 'SmolLM-360M-Instruct-q4f16_1-MLC',
 };
 
+// ── Local Storage Helpers ──────────────────────────────────────────────────────
+
+function saveConversationsToStorage(convs: Conversation[], userId?: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('chaty_conversations', JSON.stringify(convs));
+    if (userId) {
+      localStorage.setItem(`chaty_conversations_${userId}`, JSON.stringify(convs));
+    }
+  } catch {}
+}
+
+function loadConversationsFromStorage(userId?: string): Conversation[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    if (userId) {
+      const userConvs = localStorage.getItem(`chaty_conversations_${userId}`);
+      if (userConvs) {
+        const parsed = JSON.parse(userConvs);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    }
+    const globalConvs = localStorage.getItem('chaty_conversations');
+    if (globalConvs) {
+      const parsed = JSON.parse(globalConvs);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function saveMessagesToStorage(convId: string, msgs: Message[]) {
+  if (typeof window === 'undefined' || !convId) return;
+  try {
+    localStorage.setItem(`chaty_messages_${convId}`, JSON.stringify(msgs));
+  } catch {}
+}
+
+function loadMessagesFromStorage(convId: string): Message[] {
+  if (typeof window === 'undefined' || !convId) return [];
+  try {
+    const raw = localStorage.getItem(`chaty_messages_${convId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
 // ── Actions ───────────────────────────────────────────────────────────────────
 
 type Action =
@@ -141,7 +191,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_CONVERSATIONS':
       return { ...state, conversations: action.payload };
     case 'ADD_CONVERSATION':
-      return { ...state, conversations: [action.payload, ...state.conversations] };
+      return { ...state, conversations: [action.payload, ...state.conversations.filter(c => c.id !== action.payload.id)] };
     case 'UPDATE_CONVERSATION':
       return {
         ...state,
@@ -266,17 +316,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const abortRef = useRef<AbortController | null>(null);
   const streamContentRef = useRef('');
 
-  // Initial user session load & history caching
+  // Initial user session & conversation history load
   useEffect(() => {
     try {
       const stored = localStorage.getItem('chaty_user_session');
       const storedName = localStorage.getItem('chaty_user_name');
       const storedId = localStorage.getItem('chaty_user_id');
 
+      let activeUserId = '';
+
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && parsed.id) {
           setUser(parsed);
+          activeUserId = parsed.id;
           syncUser(parsed).catch(() => {});
         }
       } else if (storedName && storedId) {
@@ -286,27 +339,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           name: storedName,
         };
         setUser(sessionObj);
+        activeUserId = storedId;
         localStorage.setItem('chaty_user_session', JSON.stringify(sessionObj));
         syncUser(sessionObj).catch(() => {});
+      }
+
+      // Load cached conversations immediately
+      const cached = loadConversationsFromStorage(activeUserId);
+      if (cached.length > 0) {
+        dispatch({ type: 'SET_CONVERSATIONS', payload: cached });
       }
     } catch {}
   }, []);
 
-  // Load initial data (localStorage first for instantaneous rendering, then backend sync)
+  // Load initial remote data & sync with localStorage
   useEffect(() => {
     const load = async () => {
-      // 1. Initial load of conversations from localStorage
-      try {
-        const cachedConvs = localStorage.getItem('chaty_conversations');
-        if (cachedConvs) {
-          const parsed = JSON.parse(cachedConvs);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            dispatch({ type: 'SET_CONVERSATIONS', payload: parsed });
-          }
-        }
-      } catch {}
-
-      // 2. Initial load of API keys from localStorage
+      // 1. Initial load of API keys from localStorage
       try {
         const storedKeys = localStorage.getItem('chaty_api_keys');
         if (storedKeys) {
@@ -327,9 +376,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ]);
         if (convs.status === 'fulfilled' && convs.value && convs.value.length > 0) {
           dispatch({ type: 'SET_CONVERSATIONS', payload: convs.value });
-          try {
-            localStorage.setItem('chaty_conversations', JSON.stringify(convs.value));
-          } catch {}
+          saveConversationsToStorage(convs.value, user?.id);
         }
         if (mems.status === 'fulfilled') dispatch({ type: 'SET_MEMORIES', payload: mems.value });
         if (keys.status === 'fulfilled' && keys.value) {
@@ -408,16 +455,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // 1. Instant load from localStorage cache if available
-    try {
-      const cached = localStorage.getItem(`chaty_messages_${id}`);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          dispatch({ type: 'SET_MESSAGES', payload: parsed });
-        }
-      }
-    } catch {}
+    // 1. Instant load from localStorage cache
+    const cached = loadMessagesFromStorage(id);
+    if (cached.length > 0) {
+      dispatch({ type: 'SET_MESSAGES', payload: cached });
+    } else {
+      dispatch({ type: 'SET_MESSAGES', payload: [] });
+    }
 
     if (id.startsWith('conv-') || id.startsWith('local-')) {
       return;
@@ -426,10 +470,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_LOADING_MESSAGES', payload: true });
     try {
       const msgs = await fetchMessages(id);
-      dispatch({ type: 'SET_MESSAGES', payload: msgs });
-      try {
-        localStorage.setItem(`chaty_messages_${id}`, JSON.stringify(msgs));
-      } catch {}
+      if (msgs && msgs.length > 0) {
+        dispatch({ type: 'SET_MESSAGES', payload: msgs });
+        saveMessagesToStorage(id, msgs);
+      }
     } catch {
       // Keep cached messages if server call fails
     } finally {
@@ -446,9 +490,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const sendMessage = useCallback(async (content: string, fileIds?: string[]) => {
     if (!content.trim() || state.isStreaming) return;
 
+    let targetConvId = state.activeConversationId;
+    let currentConvs = [...state.conversations];
+
+    // Auto-create conversation if none exists
+    if (!targetConvId) {
+      targetConvId = `conv-${Date.now()}`;
+      const title = content.trim().slice(0, 32) + (content.trim().length > 32 ? '...' : '');
+      const newConv: Conversation = {
+        id: targetConvId,
+        title,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_pinned: false,
+        is_favorite: false,
+        is_archived: false,
+        model: state.activeModel,
+        message_count: 0,
+        total_tokens: 0,
+      };
+      currentConvs = [newConv, ...currentConvs];
+      dispatch({ type: 'ADD_CONVERSATION', payload: newConv });
+      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: targetConvId });
+      saveConversationsToStorage(currentConvs, user?.id);
+    }
+
     const tempUserMsg: Message = {
-      id: `temp-${Date.now()}`,
-      conversation_id: state.activeConversationId || '',
+      id: `user-${Date.now()}`,
+      conversation_id: targetConvId,
       role: 'user',
       content,
       prompt_tokens: 0,
@@ -460,7 +529,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       is_pinned: false,
       metadata: fileIds?.length ? { files: fileIds.map(id => ({ id, filename: id, original_name: id, file_type: 'file', file_size: 0, mime_type: 'application/octet-stream', created_at: new Date().toISOString() })) } : undefined,
     };
+
+    const updatedWithUser = [...state.messages, tempUserMsg];
     dispatch({ type: 'ADD_MESSAGE', payload: tempUserMsg });
+    saveMessagesToStorage(targetConvId, updatedWithUser);
+
+    // Update conversation metadata
+    const activeConv = currentConvs.find(c => c.id === targetConvId);
+    if (activeConv) {
+      const isInitialTitle = activeConv.title === 'New Conversation' || !activeConv.title;
+      const updatedConv: Conversation = {
+        ...activeConv,
+        title: isInitialTitle ? (content.trim().slice(0, 32) + (content.trim().length > 32 ? '...' : '')) : activeConv.title,
+        updated_at: new Date().toISOString(),
+        message_count: updatedWithUser.length,
+      };
+      const updatedList = currentConvs.map(c => c.id === targetConvId ? updatedConv : c);
+      dispatch({ type: 'UPDATE_CONVERSATION', payload: updatedConv });
+      saveConversationsToStorage(updatedList, user?.id);
+    }
 
     const streamingId = `streaming-${Date.now()}`;
     dispatch({ type: 'SET_STREAMING_ID', payload: streamingId });
@@ -530,8 +617,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         (fullText, stats) => {
           const latency = Date.now() - startTime;
           const assistantMsg: Message = {
-            id: `local-${Date.now()}`,
-            conversation_id: state.activeConversationId || 'local',
+            id: `assistant-${Date.now()}`,
+            conversation_id: targetConvId || 'local',
             role: 'assistant',
             content: fullText,
             model: localModelId,
@@ -544,10 +631,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             created_at: new Date().toISOString(),
             is_pinned: false,
           };
+          const finalMessages = [...updatedWithUser, assistantMsg];
           dispatch({ type: 'ADD_MESSAGE', payload: assistantMsg });
           dispatch({ type: 'SET_STREAMING', payload: false });
           dispatch({ type: 'CLEAR_STREAM' });
           dispatch({ type: 'SET_STREAMING_ID', payload: null });
+
+          // Persist messages & updated conversation
+          if (targetConvId) {
+            saveMessagesToStorage(targetConvId, finalMessages);
+            const conv = state.conversations.find(c => c.id === targetConvId);
+            if (conv) {
+              const updatedConv = { ...conv, message_count: finalMessages.length, updated_at: new Date().toISOString() };
+              dispatch({ type: 'UPDATE_CONVERSATION', payload: updatedConv });
+              saveConversationsToStorage(state.conversations.map(c => c.id === targetConvId ? updatedConv : c), user?.id);
+            }
+          }
         },
         (err) => {
           dispatch({ type: 'SET_STREAMING', payload: false });
@@ -560,13 +659,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // ─── CLOUD MODE (existing backend streaming) ───
+    // ─── CLOUD MODE (direct client & backend streaming) ───
     let finalMetadata: Partial<Message> = {};
-    let resolvedConvId = state.activeConversationId || '';
+    let resolvedConvId = targetConvId || '';
 
-    const sendConvId = state.activeConversationId?.startsWith('conv-') || state.activeConversationId?.startsWith('local-')
+    const sendConvId = targetConvId?.startsWith('conv-') || targetConvId?.startsWith('local-')
       ? undefined
-      : state.activeConversationId || undefined;
+      : targetConvId || undefined;
 
     await streamChat(
       {
@@ -598,41 +697,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       },
       async (convId) => {
-        resolvedConvId = convId || resolvedConvId;
+        resolvedConvId = convId || resolvedConvId || targetConvId || '';
         dispatch({ type: 'SET_STREAMING', payload: false });
 
         const fullAssistantText = streamContentRef.current;
+        const assistantMsg: Message = {
+          id: `assistant-${Date.now()}`,
+          conversation_id: resolvedConvId,
+          role: 'assistant',
+          content: fullAssistantText,
+          model: finalMetadata.model || state.activeModel,
+          provider: finalMetadata.provider || 'cloud',
+          prompt_tokens: finalMetadata.prompt_tokens || 0,
+          completion_tokens: finalMetadata.completion_tokens || 0,
+          total_tokens: finalMetadata.total_tokens || 0,
+          latency_ms: finalMetadata.latency_ms || 0,
+          estimated_cost: finalMetadata.estimated_cost || 0,
+          reasoning_content: finalMetadata.reasoning_content,
+          metadata: finalMetadata.metadata,
+          created_at: new Date().toISOString(),
+          is_pinned: false,
+        };
 
-        try {
-          if (resolvedConvId && !resolvedConvId.startsWith('conv-') && !resolvedConvId.startsWith('local-')) {
-            const msgs = await fetchMessages(resolvedConvId);
-            dispatch({ type: 'SET_MESSAGES', payload: msgs });
+        const finalMessages = [...updatedWithUser, assistantMsg];
+        dispatch({ type: 'ADD_MESSAGE', payload: assistantMsg });
 
-            // Update or add conversation
-            const convs = await fetchConversations();
-            dispatch({ type: 'SET_CONVERSATIONS', payload: convs });
-            dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: resolvedConvId });
-          } else {
-            throw new Error('Local fallback');
-          }
-        } catch {
-          const assistantMsg: Message = {
-            id: `assistant-${Date.now()}`,
-            conversation_id: resolvedConvId || state.activeConversationId || '',
-            role: 'assistant',
-            content: fullAssistantText,
-            model: finalMetadata.model || state.activeModel,
-            provider: finalMetadata.provider || 'cloud',
-            prompt_tokens: finalMetadata.prompt_tokens || 0,
-            completion_tokens: finalMetadata.completion_tokens || 0,
-            total_tokens: finalMetadata.total_tokens || 0,
-            latency_ms: finalMetadata.latency_ms || 0,
-            estimated_cost: finalMetadata.estimated_cost || 0,
-            created_at: new Date().toISOString(),
-            is_pinned: false,
+        // Save messages in localStorage
+        saveMessagesToStorage(resolvedConvId, finalMessages);
+
+        // Update conversations in state and localStorage
+        const existingConv = state.conversations.find(c => c.id === resolvedConvId);
+        if (existingConv) {
+          const updatedConv = {
+            ...existingConv,
+            message_count: finalMessages.length,
+            updated_at: new Date().toISOString(),
           };
-          dispatch({ type: 'ADD_MESSAGE', payload: assistantMsg });
+          dispatch({ type: 'UPDATE_CONVERSATION', payload: updatedConv });
+          saveConversationsToStorage(state.conversations.map(c => c.id === resolvedConvId ? updatedConv : c), user?.id);
         }
+
         dispatch({ type: 'CLEAR_STREAM' });
         dispatch({ type: 'SET_STREAMING_ID', payload: null });
       },
@@ -644,105 +748,103 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       ctrl.signal
     );
-  }, [state.isStreaming, state.activeConversationId, state.activeModel, state.webSearchEnabled, state.chatMode, state.webllmStatus, state.webllmModelId, state.messages, showToast]);
+  }, [state.isStreaming, state.activeConversationId, state.activeModel, state.webSearchEnabled, state.chatMode, state.webllmStatus, state.webllmModelId, state.messages, state.conversations, user?.id, showToast]);
 
   const newConversation = useCallback(async (prompt?: string, fileIds?: string[]) => {
-    // 1. Immediately reset active conversation ID & clear messages in UI for zero lag
     const tempId = `conv-${Date.now()}`;
+    const initialTitle = prompt ? (prompt.slice(0, 32) + (prompt.length > 32 ? '...' : '')) : 'New Conversation';
+    
+    const fallbackConv: Conversation = {
+      id: tempId,
+      title: initialTitle,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_pinned: false,
+      is_favorite: false,
+      is_archived: false,
+      model: state.activeModel || 'groq/llama-3.3-70b-versatile',
+      message_count: 0,
+      total_tokens: 0,
+    };
+
+    dispatch({ type: 'ADD_CONVERSATION', payload: fallbackConv });
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: tempId });
     dispatch({ type: 'SET_MESSAGES', payload: [] });
 
-    if (state.chatMode === 'local') {
-      if (prompt) {
-        setTimeout(() => sendMessage(prompt, fileIds), 50);
-      }
-      return;
-    }
+    // Save immediately to localStorage
+    const currentList = [fallbackConv, ...state.conversations.filter(c => c.id !== tempId)];
+    saveConversationsToStorage(currentList, user?.id);
+    saveMessagesToStorage(tempId, []);
 
-    // 2. Sync to server to register conversation model & ID
-    try {
-      const modelToUse = state.activeModel || 'groq/llama-3.3-70b-versatile';
-      const conv = await createConversation({ title: 'New Conversation', model: modelToUse });
-      dispatch({ type: 'ADD_CONVERSATION', payload: conv });
-      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conv.id });
-      if (prompt) {
-        setTimeout(() => sendMessage(prompt, fileIds), 50);
-      }
-    } catch {
-      // Create local fallback conversation in state if server call fails
-      const fallbackConv: Conversation = {
-        id: tempId,
-        title: 'New Conversation',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_pinned: false,
-        is_favorite: false,
-        is_archived: false,
-        model: state.activeModel || 'groq/llama-3.3-70b-versatile',
-        message_count: 0,
-        total_tokens: 0,
-      };
-      dispatch({ type: 'ADD_CONVERSATION', payload: fallbackConv });
-      if (prompt) {
-        setTimeout(() => sendMessage(prompt, fileIds), 50);
-      }
+    if (prompt) {
+      setTimeout(() => sendMessage(prompt, fileIds), 50);
     }
-  }, [state.activeModel, state.chatMode, sendMessage]);
+  }, [state.activeModel, state.conversations, user?.id, sendMessage]);
 
   const deleteConv = useCallback(async (id: string) => {
     try {
-      await apiDeleteConversation(id);
+      await apiDeleteConversation(id).catch(() => {});
       dispatch({ type: 'REMOVE_CONVERSATION', payload: id });
+      
+      const filtered = state.conversations.filter(c => c.id !== id);
+      saveConversationsToStorage(filtered, user?.id);
+      try {
+        localStorage.removeItem(`chaty_messages_${id}`);
+      } catch {}
+
       showToast('Conversation deleted', 'success');
     } catch {
       showToast('Failed to delete', 'error');
     }
-  }, [showToast]);
+  }, [state.conversations, user?.id, showToast]);
 
   const renameConv = useCallback(async (id: string, title: string) => {
     try {
-      const updated = await updateConversation(id, { title });
-      dispatch({ type: 'UPDATE_CONVERSATION', payload: updated });
+      await updateConversation(id, { title }).catch(() => {});
+      const target = state.conversations.find(c => c.id === id);
+      if (target) {
+        const updated = { ...target, title };
+        dispatch({ type: 'UPDATE_CONVERSATION', payload: updated });
+        saveConversationsToStorage(state.conversations.map(c => c.id === id ? updated : c), user?.id);
+      }
+      showToast('Conversation renamed', 'success');
     } catch {
       showToast('Failed to rename', 'error');
     }
-  }, [showToast]);
+  }, [state.conversations, user?.id, showToast]);
 
   const togglePin = useCallback(async (id: string) => {
     const conv = state.conversations.find(c => c.id === id);
     if (!conv) return;
     try {
-      const updated = await updateConversation(id, { is_pinned: !conv.is_pinned });
+      const updated = { ...conv, is_pinned: !conv.is_pinned };
+      await updateConversation(id, { is_pinned: updated.is_pinned }).catch(() => {});
       dispatch({ type: 'UPDATE_CONVERSATION', payload: updated });
+      saveConversationsToStorage(state.conversations.map(c => c.id === id ? updated : c), user?.id);
     } catch {
       showToast('Failed to update', 'error');
     }
-  }, [state.conversations, showToast]);
+  }, [state.conversations, user?.id, showToast]);
 
   const handleGoogleSignIn = useCallback(async (userSession: UserSession) => {
     setUser(userSession);
     try {
       localStorage.setItem('chaty_user_session', JSON.stringify(userSession));
-      await syncUser(userSession);
+      localStorage.setItem('chaty_user_name', userSession.name);
+      localStorage.setItem('chaty_user_id', userSession.id);
+      await syncUser(userSession).catch(() => {});
 
-      if (state.conversations.length > 0) {
-        try {
-          const localChats = state.conversations.map(c => ({
-            title: c.title,
-            model: c.model,
-            messages: state.messages.filter(m => m.conversation_id === c.id),
-          }));
-          await importConversations(userSession.id, localChats);
-        } catch {}
+      // Load user conversations if existing
+      const userConvs = loadConversationsFromStorage(userSession.id);
+      if (userConvs.length > 0) {
+        dispatch({ type: 'SET_CONVERSATIONS', payload: userConvs });
       }
 
-      const convs = await fetchConversations(userSession.id);
-      dispatch({ type: 'SET_CONVERSATIONS', payload: convs });
       showToast(`Welcome back, ${userSession.name}!`, 'success');
     } catch {
-      showToast(`Signed in as ${userSession.name}`, 'info');
+      showToast(`Welcome, ${userSession.name}`, 'info');
     }
-  }, [state.conversations, state.messages, showToast]);
+  }, [showToast]);
 
   const handleSignOut = useCallback(() => {
     setUser(null);
@@ -752,7 +854,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_CONVERSATIONS', payload: [] });
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: null });
     dispatch({ type: 'SET_MESSAGES', payload: [] });
-    showToast('Signed out of Google account', 'info');
+    showToast('Signed out of profile', 'info');
   }, [showToast]);
 
   const importLocalChatsToAccount = useCallback(async () => {
@@ -761,21 +863,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const localChats = state.conversations.map(c => ({
         title: c.title,
         model: c.model,
-        messages: state.messages.filter(m => m.conversation_id === c.id),
+        messages: loadMessagesFromStorage(c.id),
       }));
       const res = await importConversations(user.id, localChats);
-      const convs = await fetchConversations(user.id);
-      dispatch({ type: 'SET_CONVERSATIONS', payload: convs });
-      showToast(`Successfully imported ${res.imported || localChats.length} chats to account!`, 'success');
+      showToast(`Successfully synced ${res.imported || localChats.length} chats to account!`, 'success');
     } catch {
-      showToast('Failed to import local chats', 'error');
+      showToast('Failed to sync local chats', 'error');
     }
-  }, [user, state.conversations, state.messages, showToast]);
-
-  const googleClientId =
-    (typeof window !== 'undefined' && localStorage.getItem('chaty_google_client_id')) ||
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-    '';
+  }, [user, state.conversations, showToast]);
 
   return (
     <SessionProvider>
