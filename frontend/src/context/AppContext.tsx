@@ -266,24 +266,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const abortRef = useRef<AbortController | null>(null);
   const streamContentRef = useRef('');
 
-  // Initial user session load
+  // Initial user session load & history caching
   useEffect(() => {
     try {
       const stored = localStorage.getItem('chaty_user_session');
+      const storedName = localStorage.getItem('chaty_user_name');
+      const storedId = localStorage.getItem('chaty_user_id');
+
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && parsed.id) {
           setUser(parsed);
           syncUser(parsed).catch(() => {});
         }
+      } else if (storedName && storedId) {
+        const sessionObj: UserSession = {
+          id: storedId,
+          email: `${storedName.toLowerCase().replace(/\s+/g, '')}@workspace.local`,
+          name: storedName,
+        };
+        setUser(sessionObj);
+        localStorage.setItem('chaty_user_session', JSON.stringify(sessionObj));
+        syncUser(sessionObj).catch(() => {});
       }
     } catch {}
   }, []);
 
-  // Load initial data
+  // Load initial data (localStorage first for instantaneous rendering, then backend sync)
   useEffect(() => {
     const load = async () => {
-      // 1. Initial load from localStorage for client persistence
+      // 1. Initial load of conversations from localStorage
+      try {
+        const cachedConvs = localStorage.getItem('chaty_conversations');
+        if (cachedConvs) {
+          const parsed = JSON.parse(cachedConvs);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            dispatch({ type: 'SET_CONVERSATIONS', payload: parsed });
+          }
+        }
+      } catch {}
+
+      // 2. Initial load of API keys from localStorage
       try {
         const storedKeys = localStorage.getItem('chaty_api_keys');
         if (storedKeys) {
@@ -296,13 +319,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const [convs, mems, keys, models, providers] = await Promise.allSettled([
-          fetchConversations(),
+          fetchConversations(user?.id),
           fetchMemories(),
           fetchAPIKeys(),
           fetchModels(),
           fetchProviders(),
         ]);
-        if (convs.status === 'fulfilled') dispatch({ type: 'SET_CONVERSATIONS', payload: convs.value });
+        if (convs.status === 'fulfilled' && convs.value && convs.value.length > 0) {
+          dispatch({ type: 'SET_CONVERSATIONS', payload: convs.value });
+          try {
+            localStorage.setItem('chaty_conversations', JSON.stringify(convs.value));
+          } catch {}
+        }
         if (mems.status === 'fulfilled') dispatch({ type: 'SET_MEMORIES', payload: mems.value });
         if (keys.status === 'fulfilled' && keys.value) {
           let localKeys: APIKey[] = [];
@@ -337,7 +365,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
     load();
-  }, []);
+  }, [user?.id]);
 
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Math.random().toString(36).slice(2);
@@ -375,16 +403,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setActiveConversation = useCallback(async (id: string | null) => {
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id });
-    if (!id || id.startsWith('conv-') || id.startsWith('local-')) {
+    if (!id) {
       dispatch({ type: 'SET_MESSAGES', payload: [] });
       return;
     }
+
+    // 1. Instant load from localStorage cache if available
+    try {
+      const cached = localStorage.getItem(`chaty_messages_${id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          dispatch({ type: 'SET_MESSAGES', payload: parsed });
+        }
+      }
+    } catch {}
+
+    if (id.startsWith('conv-') || id.startsWith('local-')) {
+      return;
+    }
+
     dispatch({ type: 'SET_LOADING_MESSAGES', payload: true });
     try {
       const msgs = await fetchMessages(id);
       dispatch({ type: 'SET_MESSAGES', payload: msgs });
+      try {
+        localStorage.setItem(`chaty_messages_${id}`, JSON.stringify(msgs));
+      } catch {}
     } catch {
-      dispatch({ type: 'SET_MESSAGES', payload: [] });
+      // Keep cached messages if server call fails
     } finally {
       dispatch({ type: 'SET_LOADING_MESSAGES', payload: false });
     }

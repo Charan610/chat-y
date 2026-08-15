@@ -52,9 +52,9 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           const dy = particles[i].y - particles[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 120) {
-            const alpha = (1 - dist / 120) * 0.06;
+            const alpha = (1 - dist / 120) * 0.08;
             ctx.beginPath();
-            ctx.strokeStyle = `rgba(122, 142, 170, ${alpha})`;
+            ctx.strokeStyle = `rgba(255, 138, 61, ${alpha})`;
             ctx.lineWidth = 0.5;
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
@@ -67,7 +67,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
       for (const p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(122, 142, 170, ${p.opacity})`;
+        ctx.fillStyle = `rgba(255, 138, 61, ${p.opacity * 0.8})`;
         ctx.fill();
 
         p.x += p.vx;
@@ -117,7 +117,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#09090b',
+        background: '#0A0A0B',
         overflow: 'hidden',
         opacity: phase === 3 ? 0 : 1,
         transition: 'opacity 600ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -137,16 +137,16 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         }}
       />
 
-      {/* Subtle radial glow behind logo */}
+      {/* Subtle Phosphor Amber radial glow behind logo */}
       <div
         style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 400,
-          height: 400,
-          background: 'radial-gradient(circle, rgba(122,142,170,0.06) 0%, transparent 70%)',
+          width: 420,
+          height: 420,
+          background: 'radial-gradient(circle, rgba(255, 138, 61, 0.12) 0%, transparent 70%)',
           pointerEvents: 'none',
           opacity: phase >= 1 ? 1 : 0,
           transition: 'opacity 2s ease',
@@ -180,11 +180,11 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <circle cx="50" cy="50" r="48" fill="#141414" stroke="#252525" strokeWidth="1.5"/>
-            <circle cx="50" cy="50" r="44" fill="#111111"/>
-            <rect x="27" y="27" width="46" height="46" rx="10" fill="#ededed"/>
-            <circle cx="50" cy="50" r="18" fill="#09090b"/>
-            <polygon points="50,40 40.5,57.5 59.5,57.5" fill="#ededed"/>
+            <circle cx="50" cy="50" r="48" fill="#17171A" stroke="#2E2E35" strokeWidth="1.5"/>
+            <circle cx="50" cy="50" r="44" fill="#111113"/>
+            <rect x="27" y="27" width="46" height="46" rx="10" fill="#FF8A3D"/>
+            <circle cx="50" cy="50" r="18" fill="#0A0A0B"/>
+            <polygon points="50,40 40.5,57.5 59.5,57.5" fill="#FF8A3D"/>
           </svg>
         </div>
 
@@ -202,7 +202,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
               fontSize: 'clamp(32px, 6vw, 48px)',
               fontWeight: 300,
               letterSpacing: '0.25em',
-              color: '#ededed',
+              color: '#F4F4F5',
               margin: 0,
               lineHeight: 1,
               userSelect: 'none',
@@ -226,7 +226,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
               fontFamily: "'Geist', sans-serif",
               fontSize: 14,
               fontWeight: 400,
-              color: '#6b6b6b',
+              color: '#71717A',
               margin: 0,
               letterSpacing: '0.04em',
               userSelect: 'none',
@@ -241,7 +241,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           style={{
             width: phase >= 1 ? 48 : 0,
             height: 1,
-            background: 'linear-gradient(90deg, transparent, rgba(122,142,170,0.4), transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(255, 138, 61, 0.5), transparent)',
             marginTop: 28,
             transition: 'width 800ms cubic-bezier(0.16, 1, 0.3, 1) 500ms',
           }}
@@ -260,8 +260,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
             onClick={handleEnter}
             style={{
               background: 'none',
-              border: '1px solid rgba(122,142,170,0.2)',
-              color: '#a1a1a1',
+              border: '1px solid rgba(255, 138, 61, 0.3)',
+              color: '#FF8A3D',
               fontFamily: "'Geist Mono', monospace",
               fontSize: 11,
               letterSpacing: '0.12em',
@@ -273,14 +273,16 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
               textTransform: 'uppercase',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'rgba(122,142,170,0.5)';
-              e.currentTarget.style.color = '#ededed';
-              e.currentTarget.style.background = 'rgba(122,142,170,0.06)';
+              e.currentTarget.style.borderColor = '#FF8A3D';
+              e.currentTarget.style.color = '#0A0A0B';
+              e.currentTarget.style.background = '#FF8A3D';
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 138, 61, 0.4)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(122,142,170,0.2)';
-              e.currentTarget.style.color = '#a1a1a1';
+              e.currentTarget.style.borderColor = 'rgba(255, 138, 61, 0.3)';
+              e.currentTarget.style.color = '#FF8A3D';
               e.currentTarget.style.background = 'none';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
             enter workspace →

@@ -99,9 +99,10 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
   const getProviderIcon = (provider: string) => {
     switch (provider) {
       case 'webllm': return <Shield size={13} style={{ color: '#6b9a78' }} />;
-      case 'groq': return <Zap size={13} style={{ color: '#b8956a' }} />;
-      case 'nvidia_nim': return <Brain size={13} style={{ color: '#7a8eaa' }} />;
-      case 'openai': return <Sparkles size={13} style={{ color: '#6b9a78' }} />;
+      case 'groq': return <Zap size={13} style={{ color: '#FF8A3D' }} />;
+      case 'nvidia_nim': return <Brain size={13} style={{ color: '#FF8A3D' }} />;
+      case 'openai': return <Sparkles size={13} style={{ color: '#86efac' }} />;
+      case 'anthropic': return <Sparkles size={13} style={{ color: '#FFA466' }} />;
       case 'ollama': return <Monitor size={13} style={{ color: '#6b9a78' }} />;
       default: return <Sparkles size={13} style={{ color: 'var(--accent)' }} />;
     }
@@ -117,14 +118,14 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
     }
     if (provider === 'groq') {
       return (
-        <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'rgba(184,149,106,0.12)', color: '#b8956a', border: '1px solid rgba(184,149,106,0.25)', padding: '1px 4px', borderRadius: 3 }}>
+        <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'rgba(255,138,61,0.12)', color: '#FF8A3D', border: '1px solid rgba(255,138,61,0.25)', padding: '1px 4px', borderRadius: 3 }}>
           ⚡ Fast
         </span>
       );
     }
     if (provider === 'nvidia_nim') {
       return (
-        <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'rgba(122,142,170,0.12)', color: '#7a8eaa', border: '1px solid rgba(122,142,170,0.25)', padding: '1px 4px', borderRadius: 3 }}>
+        <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', background: 'rgba(255,138,61,0.12)', color: '#FF8A3D', border: '1px solid rgba(255,138,61,0.25)', padding: '1px 4px', borderRadius: 3 }}>
           🧠 Reasoning
         </span>
       );

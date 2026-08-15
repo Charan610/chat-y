@@ -953,7 +953,7 @@ export function SettingsModal() {
                 <div className="p-3 bg-surface border border-line rounded-lg flex flex-col gap-2.5">
                   <div className="font-mono text-[10px] tracking-[1px] uppercase text-accent font-semibold">Created By</div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4DE8F0] to-[#9D7BFF] flex items-center justify-center text-black font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-[#FF8A3D] flex items-center justify-center text-[#0A0A0B] font-bold text-sm shadow-[0_0_16px_rgba(255,138,61,0.3)]">
                       C
                     </div>
                     <div className="flex flex-col gap-0.5">
@@ -973,24 +973,12 @@ export function SettingsModal() {
 
                 <p className="border-t border-line pt-3 font-mono text-[10px] text-fg-4 uppercase tracking-[1px]">Stack Components</p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-mono">
-                  <div className="flex justify-between border-b border-line-2 py-1">
-                    <span className="text-fg-4">Frontend</span> <span className="text-fg-2">Next.js 14 / Tailwind CSS</span>
-                  </div>
-                  <div className="flex justify-between border-b border-line-2 py-1">
-                    <span className="text-fg-4">Local Engine</span> <span className="text-fg-2">WebLLM / WebGPU</span>
-                  </div>
-                  <div className="flex justify-between border-b border-line-2 py-1">
-                    <span className="text-fg-4">Cloud APIs</span> <span className="text-fg-2">Groq / Gemini / OpenRouter / NVIDIA</span>
-                  </div>
-                  <div className="flex justify-between border-b border-line-2 py-1">
-                    <span className="text-fg-4">Deployment</span> <span className="text-fg-2">Vercel Client-First</span>
-                  </div>
-                  <div className="flex justify-between border-b border-line-2 py-1">
-                    <span className="text-fg-4">Creator</span> <span className="text-fg-2">{creatorName} (@{instagramHandle})</span>
-                  </div>
-                  <div className="flex justify-between border-b border-line-2 py-1">
-                    <span className="text-fg-4">Animations</span> <span className="text-fg-2">Framer Motion / CSS3</span>
-                  </div>
+                  <div>Next.js 14 <span className="text-fg-4">App Router</span></div>
+                  <div>Tailwind CSS <span className="text-fg-4">v3</span></div>
+                  <div>WebLLM <span className="text-fg-4">WebGPU Client</span></div>
+                  <div>NVIDIA NIM <span className="text-fg-4">Reasoning Engine</span></div>
+                  <div>Groq / OpenRouter <span className="text-fg-4">Cloud APIs</span></div>
+                  <div>Lucide React <span className="text-fg-4">Icons</span></div>
                 </div>
               </div>
             )}
@@ -1009,80 +997,71 @@ export function SettingsModal() {
                   </p>
                 </div>
 
-                {/* ── TASK RECOMMENDATION CARDS ── */}
-                <div className="flex flex-col gap-2">
-                  <div className="font-mono text-[10px] tracking-[1px] uppercase text-accent font-semibold">Which Model Should I Use?</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* ── RECOMMENDED SETUP GUIDE ── */}
+                <div className="p-3 bg-surface border border-accent/25 rounded-lg flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-accent" />
+                    <span className="font-mono text-[10px] tracking-[1px] uppercase text-accent font-semibold">Which Model Should I Use?</span>
+                  </div>
 
-                    {/* Privacy Card */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                    {/* Fast Everyday Card */}
                     <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-md bg-[#6b9a78]/15 flex items-center justify-center"><Lock className="w-3.5 h-3.5 text-[#6b9a78]" /></div>
-                        <span className="text-[11px] font-semibold text-fg">Maximum Privacy</span>
+                        <div className="w-6 h-6 rounded-md bg-[#FF8A3D]/15 flex items-center justify-center"><Zap className="w-3.5 h-3.5 text-[#FF8A3D]" /></div>
+                        <span className="text-[11px] font-semibold text-fg">Speed &amp; Everyday</span>
                       </div>
-                      <p className="text-[10px] text-fg-3 leading-relaxed">Your data never leaves your device. Zero server traffic.</p>
+                      <p className="text-[10px] text-fg-3 leading-relaxed">Lightning-fast answers, summarizing, general queries (~500 T/s).</p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#6b9a78]/10 text-[#6b9a78] border border-[#6b9a78]/20">✦ Use WebLLM (Local)</span>
-                      </div>
-                    </div>
-
-                    {/* Speed Card */}
-                    <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-md bg-[#b8956a]/15 flex items-center justify-center"><Zap className="w-3.5 h-3.5 text-[#b8956a]" /></div>
-                        <span className="text-[11px] font-semibold text-fg">Ultra-Fast Responses</span>
-                      </div>
-                      <p className="text-[10px] text-fg-3 leading-relaxed">Fastest inference speeds available. Sub-second token generation.</p>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#b8956a]/10 text-[#b8956a] border border-[#b8956a]/20">⚡ Use Groq</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FF8A3D]/10 text-[#FF8A3D] border border-[#FF8A3D]/20">⚡ Use Groq (Free key)</span>
                       </div>
                     </div>
 
                     {/* Deep Reasoning Card */}
                     <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-md bg-[#9D7BFF]/15 flex items-center justify-center"><Brain className="w-3.5 h-3.5 text-[#9D7BFF]" /></div>
+                        <div className="w-6 h-6 rounded-md bg-[#FF8A3D]/15 flex items-center justify-center"><Brain className="w-3.5 h-3.5 text-[#FF8A3D]" /></div>
                         <span className="text-[11px] font-semibold text-fg">Deep Reasoning</span>
                       </div>
                       <p className="text-[10px] text-fg-3 leading-relaxed">Complex analysis, math, research papers, multi-step logic.</p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#9D7BFF]/10 text-[#9D7BFF] border border-[#9D7BFF]/20">🧠 Use NVIDIA NIM</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FF8A3D]/10 text-[#FF8A3D] border border-[#FF8A3D]/20">🧠 Use NVIDIA NIM</span>
                       </div>
                     </div>
 
                     {/* Coding Card */}
                     <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-md bg-[#4DE8F0]/15 flex items-center justify-center"><Code className="w-3.5 h-3.5 text-[#4DE8F0]" /></div>
+                        <div className="w-6 h-6 rounded-md bg-[#FFA466]/15 flex items-center justify-center"><Code className="w-3.5 h-3.5 text-[#FFA466]" /></div>
                         <span className="text-[11px] font-semibold text-fg">Code Generation</span>
                       </div>
                       <p className="text-[10px] text-fg-3 leading-relaxed">Writing, debugging, and reviewing code across all languages.</p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#4DE8F0]/10 text-[#4DE8F0] border border-[#4DE8F0]/20">💎 Use Gemini or OpenRouter</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FFA466]/10 text-[#FFA466] border border-[#FFA466]/20">💎 Use Gemini or OpenRouter</span>
                       </div>
                     </div>
 
                     {/* General Chat Card */}
                     <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-md bg-[#a891c8]/15 flex items-center justify-center"><MessageSquare className="w-3.5 h-3.5 text-[#a891c8]" /></div>
-                        <span className="text-[11px] font-semibold text-fg">Everyday Chat</span>
+                        <div className="w-6 h-6 rounded-md bg-[#6b9a78]/15 flex items-center justify-center"><MessageSquare className="w-3.5 h-3.5 text-[#6b9a78]" /></div>
+                        <span className="text-[11px] font-semibold text-fg">Private On-Device</span>
                       </div>
-                      <p className="text-[10px] text-fg-3 leading-relaxed">Quick Q&A, brainstorming, simple answers — no API key needed.</p>
+                      <p className="text-[10px] text-fg-3 leading-relaxed">Runs in-browser with WebGPU — no API key or server required.</p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#a891c8]/10 text-[#a891c8] border border-[#a891c8]/20">🏠 Use WebLLM (Local)</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#6b9a78]/10 text-[#6b9a78] border border-[#6b9a78]/20">🏠 Use WebLLM (Local)</span>
                       </div>
                     </div>
 
                     {/* Model Variety Card */}
-                    <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors">
+                    <div className="p-2.5 bg-surface border border-line rounded-lg flex flex-col gap-1.5 hover:border-accent/30 transition-colors col-span-full">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-md bg-[#7a8eaa]/15 flex items-center justify-center"><Globe className="w-3.5 h-3.5 text-[#7a8eaa]" /></div>
+                        <div className="w-6 h-6 rounded-md bg-[#FF8A3D]/15 flex items-center justify-center"><Globe className="w-3.5 h-3.5 text-[#FF8A3D]" /></div>
                         <span className="text-[11px] font-semibold text-fg">Access 100+ Models</span>
                       </div>
-                      <p className="text-[10px] text-fg-3 leading-relaxed">One key, dozens of models — Claude, GPT, Llama, DeepSeek & more.</p>
+                      <p className="text-[10px] text-fg-3 leading-relaxed">One key, dozens of models — Claude, GPT, Llama, DeepSeek &amp; more.</p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#7a8eaa]/10 text-[#7a8eaa] border border-[#7a8eaa]/20">🌐 Use OpenRouter</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FF8A3D]/10 text-[#FF8A3D] border border-[#FF8A3D]/20">🌐 Use OpenRouter</span>
                       </div>
                     </div>
                   </div>

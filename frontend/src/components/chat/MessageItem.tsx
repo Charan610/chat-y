@@ -36,8 +36,9 @@ function getModelAvatar(model?: string) {
 }
 
 function getSpeedBadge(provider: string) {
-  if (provider === 'groq') return { label: '⚡ FAST', color: '#b8956a' };
-  if (provider === 'nvidia') return { label: '🧠 REASONING', color: '#7a8eaa' };
+  if (provider === 'groq') return { label: '⚡ FAST', color: '#FF8A3D' };
+  if (provider === 'nvidia' || provider === 'nvidia_nim') return { label: '🧠 REASONING', color: '#FF8A3D' };
+  if (provider === 'webllm') return { label: '✦ LOCAL', color: '#6b9a78' };
   return null;
 }
 

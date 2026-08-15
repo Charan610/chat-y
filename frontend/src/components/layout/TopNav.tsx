@@ -17,16 +17,16 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { ModelPickerModal } from '@/components/modals/ModelPickerModal';
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { UserProfileButton } from '@/components/auth/UserProfileButton';
 
 const PROVIDER_BADGES: Record<string, { label: string; color: string }> = {
   webllm: { label: '✦ LOCAL', color: '#6b9a78' },
-  groq: { label: '⚡ FAST', color: '#b8956a' },
-  nvidia: { label: '🧠 REASON', color: '#7a8eaa' },
-  nvidia_nim: { label: '🧠 REASON', color: '#7a8eaa' },
+  groq: { label: '⚡ FAST', color: '#FF8A3D' },
+  nvidia: { label: '🧠 REASON', color: '#FF8A3D' },
+  nvidia_nim: { label: '🧠 REASON', color: '#FF8A3D' },
   openai: { label: 'GPT', color: '#6b9a78' },
-  anthropic: { label: 'CLAUDE', color: '#a891c8' },
-  google: { label: 'GEMINI', color: '#7a8eaa' },
+  anthropic: { label: 'CLAUDE', color: '#FF8A3D' },
+  google: { label: 'GEMINI', color: '#FF8A3D' },
   ollama: { label: 'LOCAL', color: '#6b9a78' },
 };
 
@@ -269,8 +269,8 @@ export function TopNav() {
             <ChevronDown size={11} style={{ flexShrink: 0, opacity: 0.6 }} />
           </button>
 
-          {/* Google Auth & User Session */}
-          <GoogleAuthButton />
+          {/* User Persona & Profile Management */}
+          <UserProfileButton />
 
           {/* Settings button */}
           <button
@@ -297,138 +297,6 @@ export function TopNav() {
           >
             <Settings size={15} />
           </button>
-
-          {/* Avatar */}
-          <div className="relative" ref={profileRef}>
-            <button
-              onClick={() => setShowProfile(!showProfile)}
-              className="touch-btn"
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: '50%',
-                background: 'var(--accent-bg)',
-                border: '1px solid var(--accent-bd)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--accent)',
-                fontFamily: 'var(--font-mono)',
-                cursor: 'pointer',
-                flexShrink: 0,
-                transition: 'transform 150ms ease, box-shadow 150ms ease',
-              }}
-              title={`${userName} (${userId})`}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(122,142,170,0.15)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              {userName.charAt(0).toUpperCase()}
-            </button>
-
-            {/* Profile Popover */}
-            {showProfile && (
-              <div
-                className="animate-fade-in-scale"
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 40,
-                  width: 240,
-                  background: 'var(--surface)',
-                  border: '1px solid var(--line)',
-                  borderRadius: 12,
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-                  padding: 12,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                  zIndex: 50,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 8, borderBottom: '1px solid var(--line)' }}>
-                  <div style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: '50%',
-                    background: 'var(--accent-bg)',
-                    border: '1px solid var(--accent-bd)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    color: 'var(--accent)',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 12,
-                    flexShrink: 0,
-                  }}>
-                    {userName.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
-                    <div style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-mono)' }}>Workspace User</div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '1px', textTransform: 'uppercase' }}>User ID</span>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 8px',
-                    background: 'var(--bg)',
-                    border: '1px solid var(--line)',
-                    borderRadius: 6,
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                  }}>
-                    <Key size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                    <span style={{ color: 'var(--accent)', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userId}</span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(userId);
-                        setCopiedId(true);
-                        setTimeout(() => setCopiedId(false), 2000);
-                      }}
-                      style={{
-                        padding: 4,
-                        background: 'none',
-                        border: 'none',
-                        color: copiedId ? 'var(--ok)' : 'var(--fg-4)',
-                        cursor: 'pointer',
-                        borderRadius: 4,
-                        display: 'flex',
-                        transition: 'all 150ms ease',
-                      }}
-                      title="Copy User ID"
-                    >
-                      {copiedId ? <Check size={12} /> : <Copy size={12} />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setShowProfile(false);
-                    dispatch({ type: 'SET_SETTINGS_OPEN', payload: true });
-                  }}
-                  className="btn"
-                  style={{ justifyContent: 'center', fontSize: 11, marginTop: 2 }}
-                >
-                  Workspace Settings
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </header>
 

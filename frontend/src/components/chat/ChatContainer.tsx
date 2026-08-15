@@ -70,14 +70,14 @@ export function ChatContainer() {
             position: 'absolute',
             inset: 12,
             zIndex: 50,
-            background: 'rgba(122,142,170,0.04)',
-            border: '2px dashed var(--accent-bd)',
+            background: 'rgba(255, 138, 61, 0.05)',
+            border: '2px dashed var(--accent)',
             borderRadius: 16,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             pointerEvents: 'none',
-            backdropFilter: 'blur(4px)',
+            backdropFilter: 'blur(6px)',
           }}
         >
           <div style={{ textAlign: 'center', color: 'var(--accent)' }}>

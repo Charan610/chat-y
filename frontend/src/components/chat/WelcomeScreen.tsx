@@ -6,15 +6,14 @@ import {
   Globe,
   FileText,
   Code2,
-  Search,
   Bug,
   BookOpen,
   Cpu,
-  Upload,
   ChevronRight,
+  Sparkles,
+  Terminal,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
 const QUICK_PROMPTS = [
   { icon: Cpu, label: 'Explain quantum computing', prompt: 'Explain quantum computing in simple terms with a real-world example.' },
@@ -26,35 +25,38 @@ const QUICK_PROMPTS = [
 ];
 
 const PROVIDERS = [
-  { id: 'groq', label: 'Groq', color: '#b8956a' },
-  { id: 'nvidia', label: 'NVIDIA', color: '#6b9a78' },
-  { id: 'openai', label: 'OpenAI', color: '#a891c8' },
-  { id: 'anthropic', label: 'Anthropic', color: '#7a8eaa' },
+  { id: 'groq', label: 'Groq', color: '#FF8A3D' },
+  { id: 'webllm', label: 'WebLLM', color: '#6b9a78' },
+  { id: 'nvidia', label: 'NVIDIA', color: '#FF8A3D' },
+  { id: 'openai', label: 'OpenAI', color: '#86efac' },
+  { id: 'anthropic', label: 'Anthropic', color: '#FFA466' },
 ];
 
 export function WelcomeScreen() {
   const { state, user, newConversation, dispatch } = useApp();
-  const { conversations, activeModel } = state;
+  const { conversations } = state;
 
   const recentConvs = conversations.slice(0, 3);
+  const userName = user?.name || (typeof window !== 'undefined' ? localStorage.getItem('chaty_user_name') : null);
 
   return (
     <div
       className="flex flex-col items-center justify-center h-full overflow-auto w-full"
-      style={{ padding: 'var(--chat-padding)' }}
+      style={{ padding: 'var(--chat-padding)', background: 'var(--bg)' }}
     >
-      <div style={{ maxWidth: 640, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
+      <div style={{ maxWidth: 640, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26 }}>
         {/* Hero */}
         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          {/* Orb */}
-          <div style={{ position: 'relative', width: 64, height: 64 }}>
+          
+          {/* Phosphor Amber Glowing Orb */}
+          <div style={{ position: 'relative', width: 68, height: 68 }}>
             <div
               className="animate-breathe"
               style={{
                 position: 'absolute',
-                inset: -8,
+                inset: -10,
                 borderRadius: '50%',
-                background: 'radial-gradient(circle, var(--accent) 0%, transparent 65%)',
+                background: 'radial-gradient(circle, rgba(255, 138, 61, 0.35) 0%, transparent 70%)',
               }}
             />
             <div
@@ -62,51 +64,54 @@ export function WelcomeScreen() {
                 position: 'absolute',
                 inset: 0,
                 borderRadius: '50%',
-                background: 'radial-gradient(circle at 35% 35%, rgba(122,142,170,0.9) 0%, rgba(93,117,147,0.6) 60%, transparent 100%)',
-                border: '1px solid rgba(122,142,170,0.3)',
+                background: 'radial-gradient(circle at 35% 35%, #FF8A3D 0%, #B8591B 65%, #17171A 100%)',
+                border: '1px solid rgba(255, 138, 61, 0.5)',
+                boxShadow: '0 0 24px rgba(255, 138, 61, 0.35), inset 0 0 12px rgba(255, 138, 61, 0.4)',
               }}
             />
             <div
               style={{
                 position: 'absolute',
                 top: 10,
-                left: 10,
-                width: 14,
-                height: 14,
+                left: 12,
+                width: 16,
+                height: 16,
                 borderRadius: '50%',
-                background: 'rgba(255,255,255,0.35)',
-                filter: 'blur(4px)',
+                background: 'rgba(255, 255, 255, 0.65)',
+                filter: 'blur(3px)',
               }}
             />
           </div>
 
           <div>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FF8A3D]/10 border border-[#FF8A3D]/30 text-[#FF8A3D] text-[11px] font-mono font-medium">
+                <Sparkles size={11} />
+                PHOSPHOR CORE
+              </span>
+            </div>
+            
             <h1
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 'clamp(22px, 5vw, 28px)',
-                fontWeight: 600,
-                letterSpacing: '0.14em',
+                fontSize: 'clamp(24px, 5vw, 32px)',
+                fontWeight: 700,
+                letterSpacing: '0.12em',
                 color: 'var(--fg)',
                 margin: 0,
               }}
             >
               CHAT-Y
             </h1>
-            <p style={{ color: 'var(--fg-3)', margin: '4px 0 0', fontSize: 14 }}>
-              Your AI Workspace
+
+            <p style={{ color: 'var(--fg-3)', margin: '6px 0 0', fontSize: 14 }}>
+              {userName ? (
+                <>Welcome back, <span className="text-[#FF8A3D] font-medium">{userName}</span></>
+              ) : (
+                'Your Minimal AI Workspace'
+              )}
             </p>
           </div>
-
-          {!user && (
-            <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-surface border border-line text-xs w-full max-w-[420px] text-fg-3 shadow-sm">
-              <div className="flex items-center gap-2 truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                <span className="truncate">Sign in with Google to save your chats across devices.</span>
-              </div>
-              <GoogleAuthButton />
-            </div>
-          )}
 
           {/* Start New Chat Button */}
           <button
@@ -115,26 +120,26 @@ export function WelcomeScreen() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              padding: '10px 24px',
+              padding: '11px 26px',
               background: 'var(--accent)',
-              color: '#fff',
+              color: '#0A0A0B',
               border: 'none',
               borderRadius: 24,
               fontSize: 13,
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
-              transition: 'all 200ms ease',
-              boxShadow: '0 4px 16px rgba(122,142,170,0.25)',
+              transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+              boxShadow: '0 4px 20px rgba(255, 138, 61, 0.35)',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--accent-2)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 6px 24px rgba(122,142,170,0.35)';
+              e.currentTarget.style.background = 'var(--accent-3)';
+              e.currentTarget.style.transform = 'translateY(-1px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 6px 28px rgba(255, 138, 61, 0.5)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'var(--accent)';
               e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(122,142,170,0.25)';
+              e.currentTarget.style.boxShadow = '0 4px 20px rgba(255, 138, 61, 0.35)';
             }}
             onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
             onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
@@ -148,7 +153,7 @@ export function WelcomeScreen() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
             gap: 8,
             width: '100%',
           }}
@@ -165,17 +170,17 @@ export function WelcomeScreen() {
                 padding: '12px 14px',
                 cursor: 'pointer',
                 border: '1px solid var(--line)',
-                borderRadius: 10,
+                borderRadius: 12,
                 background: 'var(--surface)',
                 textAlign: 'left',
-                transition: 'all 200ms ease',
+                transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
                 color: 'inherit',
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.borderColor = 'var(--accent-bd)';
                 e.currentTarget.style.background = 'var(--elevated)';
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(255,138,61,0.08)';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.borderColor = 'var(--line)';
@@ -194,7 +199,7 @@ export function WelcomeScreen() {
         {recentConvs.length > 0 && (
           <div style={{ width: '100%' }}>
             <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '0.1em', marginBottom: 8, fontWeight: 600 }}>
-              RECENT
+              RECENT CONVERSATIONS
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {recentConvs.map(conv => (
@@ -208,7 +213,7 @@ export function WelcomeScreen() {
                     padding: '10px 12px',
                     background: 'var(--surface)',
                     border: '1px solid var(--line)',
-                    borderRadius: 8,
+                    borderRadius: 10,
                     cursor: 'pointer',
                     color: 'var(--fg-2)',
                     fontSize: 13,
@@ -256,7 +261,7 @@ export function WelcomeScreen() {
             flexWrap: 'wrap',
           }}
         >
-          <span style={{ color: 'var(--fg-4)' }}>PROVIDERS</span>
+          <span style={{ color: 'var(--fg-4)' }}>ENGINES</span>
           {PROVIDERS.map(p => (
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div

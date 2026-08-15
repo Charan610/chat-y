@@ -10,9 +10,12 @@ import { Toast } from '@/components/ui/Toast';
 import { SplashScreen } from '@/components/SplashScreen';
 import { UserOnboardingModal } from '@/components/modals/UserOnboardingModal';
 
+import { useApp } from '@/context/AppContext';
+
 export default function Page() {
   const [showSplash, setShowSplash] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { handleGoogleSignIn, showToast } = useApp();
 
   useEffect(() => {
     // Check splash
@@ -23,7 +26,8 @@ export default function Page() {
 
     // Check user profile onboarding
     const userId = localStorage.getItem('chaty_user_id');
-    if (!userId) {
+    const userName = localStorage.getItem('chaty_user_name');
+    if (!userId || !userName) {
       setShowOnboarding(true);
     }
   }, []);
@@ -35,6 +39,13 @@ export default function Page() {
 
   const handleOnboardingComplete = (name: string, userId: string) => {
     setShowOnboarding(false);
+    const sessionObj = {
+      id: userId,
+      email: `${name.toLowerCase().replace(/\s+/g, '')}@workspace.local`,
+      name,
+    };
+    handleGoogleSignIn(sessionObj);
+    showToast(`Welcome to your workspace, ${name}!`, 'success');
   };
 
   return (

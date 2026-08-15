@@ -6,21 +6,23 @@
 
 /* ── Design Tokens ──────────────────────────────────────────────────────────── */
 :root {
-  --bg: #0a0a0a;
-  --surface: #111111;
-  --elevated: #161616;
-  --hover: #1a1a1a;
-  --line: #1f1f1f;
-  --line-2: #262626;
-  --line-3: #333333;
-  --fg: #ededed;
-  --fg-2: #a1a1a1;
-  --fg-3: #6b6b6b;
-  --fg-4: #525252;
-  --accent: #7a8eaa;
-  --accent-2: #5d7593;
-  --accent-bg: rgba(122, 142, 170, 0.08);
-  --accent-bd: rgba(122, 142, 170, 0.25);
+  --bg: #0A0A0B;
+  --surface: #111113;
+  --elevated: #17171A;
+  --hover: #1F1F23;
+  --line: #242429;
+  --line-2: #2E2E35;
+  --line-3: #3D3D47;
+  --fg: #F4F4F5;
+  --fg-2: #A1A1AA;
+  --fg-3: #71717A;
+  --fg-4: #52525B;
+  --accent: #FF8A3D;
+  --accent-2: #E67328;
+  --accent-3: #FFA466;
+  --accent-bg: rgba(255, 138, 61, 0.08);
+  --accent-bd: rgba(255, 138, 61, 0.28);
+  --accent-glow: rgba(255, 138, 61, 0.2);
   --ok: #6b9a78;
   --warn: #b8956a;
   --bad: #b87470;
@@ -140,13 +142,14 @@ body {
   .btn-primary {
     @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium cursor-pointer select-none;
     background: var(--accent);
-    color: #fff;
+    color: #0A0A0B;
+    font-weight: 600;
     border: 1px solid transparent;
     transition: background 150ms ease, transform 100ms ease, box-shadow 200ms ease;
   }
   .btn-primary:hover {
-    background: var(--accent-2);
-    box-shadow: 0 2px 12px rgba(122, 142, 170, 0.2);
+    background: var(--accent-3);
+    box-shadow: 0 2px 16px rgba(255, 138, 61, 0.35);
   }
   .btn-primary:active {
     transform: scale(0.97);
@@ -168,7 +171,7 @@ body {
   .input:focus {
     border-color: var(--accent-bd);
     background: var(--surface);
-    box-shadow: 0 0 0 3px rgba(122, 142, 170, 0.08);
+    box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.12);
   }
   .input::placeholder {
     color: var(--fg-4);
@@ -493,21 +496,22 @@ code {
   padding: 0 !important;
 }
 
-.hljs-keyword { color: #7a8eaa !important; }
-.hljs-string { color: #6b9a78 !important; }
-.hljs-number { color: #b8956a !important; }
-.hljs-comment { color: var(--fg-4) !important; font-style: italic; }
-.hljs-function { color: #a891c8 !important; }
-.hljs-variable { color: var(--fg-2) !important; }
-.hljs-class { color: #c89168 !important; }
-.hljs-built_in { color: #7a8eaa !important; }
-.hljs-attr { color: #a891c8 !important; }
-.hljs-title { color: #c89168 !important; }
+.hljs-keyword { color: #FF8A3D !important; font-weight: 500; }
+.hljs-string { color: #86efac !important; }
+.hljs-number { color: #f59e0b !important; }
+.hljs-comment { color: #71717A !important; font-style: italic; }
+.hljs-function { color: #FFB380 !important; }
+.hljs-variable { color: #F4F4F5 !important; }
+.hljs-class { color: #FF8A3D !important; }
+.hljs-built_in { color: #FFA466 !important; }
+.hljs-attr { color: #E4E4E7 !important; }
+.hljs-title { color: #FF8A3D !important; }
 .hljs-literal { color: var(--bad) !important; }
 
 /* ── Selection ───────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(122, 142, 170, 0.3);
+  background: rgba(255, 138, 61, 0.28);
+  color: #F4F4F5;
 }
 
 /* ── Safe area support (notched devices) ── */

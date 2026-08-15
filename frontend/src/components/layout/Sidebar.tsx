@@ -277,12 +277,12 @@ export function Sidebar() {
               xmlns="http://www.w3.org/2000/svg"
               style={{ position: 'relative', zIndex: 1 }}
             >
-              <circle cx="50" cy="50" r="46" fill="#222222" stroke="#3c3c3c" strokeWidth="2"/>
-              <circle cx="50" cy="50" r="44" fill="#1a1a1a"/>
-              <circle cx="50" cy="50" r="42" fill="#222222"/>
-              <rect x="27" y="27" width="46" height="46" rx="10" fill="white"/>
-              <circle cx="50" cy="50" r="18" fill="black"/>
-              <polygon points="50,40 40.5,57.5 59.5,57.5" fill="white"/>
+              <circle cx="50" cy="50" r="46" fill="#17171A" stroke="#2E2E35" strokeWidth="2"/>
+              <circle cx="50" cy="50" r="44" fill="#111113"/>
+              <circle cx="50" cy="50" r="42" fill="#17171A"/>
+              <rect x="27" y="27" width="46" height="46" rx="10" fill="#FF8A3D"/>
+              <circle cx="50" cy="50" r="18" fill="#0A0A0B"/>
+              <polygon points="50,40 40.5,57.5 59.5,57.5" fill="#FF8A3D"/>
             </svg>
           </div>
           <AnimatePresence>
@@ -295,7 +295,7 @@ export function Sidebar() {
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   letterSpacing: '0.12em',
                   color: 'var(--fg)',
                 }}
@@ -322,18 +322,20 @@ export function Sidebar() {
               borderRadius: 8,
               color: 'var(--accent)',
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 200ms ease',
               minHeight: 40,
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(122,142,170,0.14)';
+              e.currentTarget.style.background = 'rgba(255, 138, 61, 0.16)';
               e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 0 16px rgba(255, 138, 61, 0.15)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'var(--accent-bg)';
               e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
             <Plus size={15} />

@@ -267,7 +267,7 @@ export function ChatInput({
         {/* Floating input pill */}
         <div
           style={{
-            border: `1px solid ${isFocused ? 'var(--accent-bd)' : 'var(--line-2)'}`,
+            border: `1px solid ${isFocused ? 'var(--accent)' : 'var(--line-2)'}`,
             borderRadius: 'var(--input-radius)',
             background: 'var(--surface)',
             display: 'flex',
@@ -275,8 +275,8 @@ export function ChatInput({
             overflow: 'hidden',
             transition: 'border-color 200ms ease, box-shadow 300ms ease',
             boxShadow: isFocused
-              ? '0 0 0 3px rgba(122,142,170,0.08), 0 8px 32px rgba(0,0,0,0.3)'
-              : '0 4px 20px rgba(0,0,0,0.2)',
+              ? '0 0 0 3px rgba(255, 138, 61, 0.12), 0 8px 32px rgba(0,0,0,0.5), 0 0 16px rgba(255, 138, 61, 0.08)'
+              : '0 4px 20px rgba(0,0,0,0.3)',
           }}
         >
           <textarea
@@ -492,25 +492,28 @@ export function ChatInput({
                     borderRadius: '50%',
                     background: value.trim() ? 'var(--accent)' : 'var(--line-2)',
                     border: 'none',
-                    color: value.trim() ? '#fff' : 'var(--fg-4)',
+                    color: value.trim() ? '#0A0A0B' : 'var(--fg-4)',
                     cursor: value.trim() ? 'pointer' : 'not-allowed',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                    transition: 'all 200ms ease',
+                    transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
                     transform: 'scale(1)',
+                    boxShadow: value.trim() ? '0 0 14px rgba(255, 138, 61, 0.35)' : 'none',
                   }}
                   onMouseEnter={e => {
                     if (value.trim()) {
-                      e.currentTarget.style.background = 'var(--accent-2)';
+                      e.currentTarget.style.background = 'var(--accent-3)';
                       e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 138, 61, 0.5)';
                     }
                   }}
                   onMouseLeave={e => {
                     if (value.trim()) {
                       e.currentTarget.style.background = 'var(--accent)';
                       e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 0 14px rgba(255, 138, 61, 0.35)';
                     }
                   }}
                   onMouseDown={e => {
@@ -524,7 +527,7 @@ export function ChatInput({
                     }
                   }}
                 >
-                  <ArrowUp size={16} />
+                  <ArrowUp size={16} strokeWidth={2.5} />
                 </button>
               )}
             </div>
