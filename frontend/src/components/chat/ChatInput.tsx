@@ -24,7 +24,7 @@ export function ChatInput({
   onSend: (content: string) => void;
 }) {
   const { state, dispatch, stopStreaming, showToast } = useApp();
-  const { isStreaming, webSearchEnabled, activeModel } = state;
+  const { isStreaming, webSearchEnabled, activeModel, chatMode } = state;
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -381,29 +381,52 @@ export function ChatInput({
                 <Mic size={16} className={isListening ? "animate-pulse" : ""} />
               </button>
 
-              {/* Web Search */}
-              <button
-                onClick={() => dispatch({ type: 'TOGGLE_WEB_SEARCH' })}
-                title="Toggle web search"
-                className="touch-btn"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  background: webSearchEnabled ? 'var(--accent-bg)' : 'none',
-                  border: webSearchEnabled ? '1px solid var(--accent-bd)' : '1px solid transparent',
-                  color: webSearchEnabled ? 'var(--accent)' : 'var(--fg-4)',
-                  cursor: 'pointer',
-                  padding: '5px 7px',
-                  borderRadius: 8,
-                  fontSize: 11,
-                  fontFamily: 'var(--font-mono)',
-                  transition: 'all 200ms ease',
-                }}
-              >
-                <Globe size={14} />
-                {webSearchEnabled && <span className="hidden sm:inline">WEB</span>}
-              </button>
+              {/* Web Search Toggle */}
+              {chatMode === 'local' || activeModel.startsWith('webllm/') ? (
+                <button
+                  disabled
+                  title="Web Search is disabled for local offline WebGPU models"
+                  className="touch-btn opacity-40 cursor-not-allowed"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'none',
+                    border: '1px solid transparent',
+                    color: 'var(--fg-4)',
+                    padding: '5px 7px',
+                    borderRadius: 8,
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  <Globe size={14} />
+                  <span className="hidden sm:inline">WEB (OFFLINE)</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => dispatch({ type: 'TOGGLE_WEB_SEARCH' })}
+                  title={webSearchEnabled ? "Web search enabled (click to disable)" : "Enable real-time web search"}
+                  className="touch-btn"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: webSearchEnabled ? 'var(--accent-bg)' : 'none',
+                    border: webSearchEnabled ? '1px solid var(--accent-bd)' : '1px solid transparent',
+                    color: webSearchEnabled ? 'var(--accent)' : 'var(--fg-4)',
+                    cursor: 'pointer',
+                    padding: '5px 7px',
+                    borderRadius: 8,
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono)',
+                    transition: 'all 200ms ease',
+                  }}
+                >
+                  <Globe size={14} className={webSearchEnabled ? "animate-pulse" : ""} />
+                  <span className="hidden sm:inline">{webSearchEnabled ? 'WEB ON' : 'WEB'}</span>
+                </button>
+              )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

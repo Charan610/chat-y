@@ -10,6 +10,7 @@ import type {
   StreamChunk,
   ChatRequest,
 } from '@/types';
+import { webSearch } from './webSearch';
 
 const BASE_URL = '';
 
@@ -69,41 +70,8 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
 }
 
 // ── Web Search ───────────────────────────────────────────────────────────────
-export async function fetchWebSearch(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
-  try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
-    if (res && res.ok) {
-      return await res.json();
-    }
-    const ddgRes = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { mode: 'cors' }).catch(() => null);
-    if (!ddgRes || !ddgRes.ok) return [];
-    const html = await ddgRes.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const results: Array<{ title: string; url: string; snippet: string }> = [];
-    const nodes = doc.querySelectorAll('.result');
-    nodes.forEach((node, i) => {
-      if (i >= 5) return;
-      const a = node.querySelector('.result__a') as HTMLAnchorElement | null;
-      const s = node.querySelector('.result__snippet');
-      if (!a) return;
-      let url = a.href || '';
-      if (url.includes('uddg=')) {
-        try {
-          const u = new URL(url);
-          url = u.searchParams.get('uddg') || url;
-        } catch {}
-      }
-      results.push({
-        title: a.textContent?.trim() || '',
-        url: url,
-        snippet: s?.textContent?.trim() || '',
-      });
-    });
-    return results;
-  } catch {
-    return [];
-  }
+export async function fetchWebSearch(query: string) {
+  return await webSearch(query);
 }
 
 export async function streamDirectCloud(
@@ -178,6 +146,9 @@ export async function streamDirectCloud(
   } else if (activeProvider === 'openrouter') {
     endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+    if (req.web_search && !rawModelId.endsWith(':online')) {
+      rawModelId = `${rawModelId}:online`;
+    }
   }
 
   try {
