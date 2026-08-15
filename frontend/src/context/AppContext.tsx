@@ -44,6 +44,7 @@ export interface UserSession {
   email: string;
   name: string;
   picture?: string;
+  image?: string | null;
 }
 
 interface AppState {
