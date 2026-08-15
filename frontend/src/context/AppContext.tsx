@@ -677,13 +677,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem('chaty_user_session', JSON.stringify(userSession));
       await syncUser(userSession);
+
+      if (state.conversations.length > 0) {
+        try {
+          const localChats = state.conversations.map(c => ({
+            title: c.title,
+            model: c.model,
+            messages: state.messages.filter(m => m.conversation_id === c.id),
+          }));
+          await importConversations(userSession.id, localChats);
+        } catch {}
+      }
+
       const convs = await fetchConversations(userSession.id);
       dispatch({ type: 'SET_CONVERSATIONS', payload: convs });
-      showToast(`Welcome, ${userSession.name}!`, 'success');
+      showToast(`Welcome back, ${userSession.name}!`, 'success');
     } catch {
       showToast(`Signed in as ${userSession.name}`, 'info');
     }
-  }, [showToast]);
+  }, [state.conversations, state.messages, showToast]);
 
   const handleSignOut = useCallback(() => {
     setUser(null);
