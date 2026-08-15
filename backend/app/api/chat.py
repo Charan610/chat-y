@@ -75,7 +75,7 @@ async def list_conversations(
 ):
     query = select(Conversation)
     if user_id:
-        query = query.where(Conversation.user_id == user_id)
+        query = query.where(or_(Conversation.user_id == user_id, Conversation.user_id.is_(None)))
     if search:
         query = query.where(Conversation.title.ilike(f"%{search}%"))
     if folder_id:
