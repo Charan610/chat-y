@@ -19,22 +19,29 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     let testUrl = '';
     const headers: Record<string, string> = {};
 
-    if (provider === 'groq') {
-      testUrl = 'https://api.groq.com/openai/v1/models';
+    const normalizedProvider = String(provider).toLowerCase().replace('gemini', 'google').replace('claude', 'anthropic');
+    const configuredBase = String(base_url || '').replace(/\/$/, '');
+    if (normalizedProvider === 'groq') {
+      testUrl = `${configuredBase || 'https://api.groq.com/openai/v1'}/models`;
       headers['Authorization'] = `Bearer ${api_key}`;
-    } else if (provider === 'openai') {
-      testUrl = 'https://api.openai.com/v1/models';
+    } else if (normalizedProvider === 'openai') {
+      testUrl = `${configuredBase || 'https://api.openai.com/v1'}/models`;
       headers['Authorization'] = `Bearer ${api_key}`;
-    } else if (provider === 'nvidia_nim') {
-      testUrl = (base_url || 'https://integrate.api.nvidia.com/v1') + '/models';
+    } else if (normalizedProvider === 'nvidia_nim') {
+      testUrl = `${configuredBase || 'https://integrate.api.nvidia.com/v1'}/models`;
       headers['Authorization'] = `Bearer ${api_key}`;
-    } else if (provider === 'anthropic') {
-      testUrl = 'https://api.anthropic.com/v1/models';
+    } else if (normalizedProvider === 'anthropic') {
+      testUrl = `${configuredBase || 'https://api.anthropic.com/v1'}/models`;
       headers['x-api-key'] = api_key;
       headers['anthropic-version'] = '2023-06-01';
-    } else if (provider === 'openrouter') {
-      testUrl = 'https://openrouter.ai/api/v1/models';
+    } else if (normalizedProvider === 'openrouter') {
+      testUrl = `${configuredBase || 'https://openrouter.ai/api/v1'}/models`;
       headers['Authorization'] = `Bearer ${api_key}`;
+    } else if (normalizedProvider === 'google') {
+      testUrl = `${configuredBase || 'https://generativelanguage.googleapis.com/v1beta/openai'}/models`;
+      headers['Authorization'] = `Bearer ${api_key}`;
+    } else if (normalizedProvider === 'ollama') {
+      testUrl = `${configuredBase || 'http://localhost:11434'}/api/tags`;
     } else {
       return NextResponse.json({ status: 'unknown', message: `Health check not supported for provider: ${provider}` });
     }

@@ -53,7 +53,7 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
   // Map state models to picker format
   const dbModels = [
     ...webllmModels,
-    ...models.map(m => ({
+    ...models.filter(m => m.is_enabled).map(m => ({
       name: m.name,
       provider: m.provider,
       model_id: m.model_id,
@@ -61,7 +61,9 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
     }))
   ];
 
-  const allModels = dbModels.length > 3 ? dbModels : defaultModels;
+  // Cloud models only appear after a key has been checked and the provider has
+  // returned them. This prevents selecting stale/non-working hardcoded models.
+  const allModels = models.length > 0 ? dbModels : webllmModels;
 
   const { loadWebLLM } = useApp();
 

@@ -366,6 +366,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch {}
+      try {
+        const storedModels = localStorage.getItem('chaty_models');
+        if (storedModels) {
+          const parsed = JSON.parse(storedModels);
+          if (Array.isArray(parsed)) dispatch({ type: 'SET_MODELS', payload: parsed });
+        }
+      } catch {}
 
       try {
         const [convs, mems, keys, models, providers] = await Promise.allSettled([
@@ -406,7 +413,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('chaty_api_keys', JSON.stringify(merged));
           } catch {}
         }
-        if (models.status === 'fulfilled') dispatch({ type: 'SET_MODELS', payload: models.value });
+        if (models.status === 'fulfilled' && models.value.length > 0) dispatch({ type: 'SET_MODELS', payload: models.value });
         if (providers.status === 'fulfilled') dispatch({ type: 'SET_PROVIDERS', payload: providers.value });
       } catch {
         // silently fail - backend may not be running yet

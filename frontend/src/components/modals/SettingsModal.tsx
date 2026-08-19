@@ -37,9 +37,11 @@ import {
   createAPIKey,
   deleteAPIKey,
   checkAPIKey,
+  discoverAPIModels,
   createModel,
   deleteModel,
   updateModel,
+  updateAPIKey,
   createMemory,
   deleteMemory
 } from '@/lib/api';
@@ -68,6 +70,7 @@ export function SettingsModal() {
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyValue, setNewKeyValue] = useState('');
   const [newKeyUrl, setNewKeyUrl] = useState(DEFAULT_BASE_URLS['groq']);
+  const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
 
   // Creator info — hardcoded, not editable
   const creatorName = 'Charan';
@@ -142,7 +145,7 @@ export function SettingsModal() {
       return;
     }
 
-    const tempId = `key-${Date.now()}`;
+    const tempId = editingKeyId || `key-${Date.now()}`;
     const keyName = newKeyName.trim() || `${newKeyProvider.toUpperCase()} Key`;
     const baseUrl = newKeyUrl.trim() || undefined;
 
@@ -170,7 +173,14 @@ export function SettingsModal() {
 
     // 2. Sync to backend API
     try {
-      const serverKey = await createAPIKey({
+      const serverKey = editingKeyId ? await updateAPIKey(editingKeyId, {
+        provider: newKeyProvider,
+        key_name: keyName,
+        api_key: rawKey,
+        base_url: baseUrl,
+        is_active: true,
+        is_default: true,
+      }) : await createAPIKey({
         provider: newKeyProvider,
         key_name: keyName,
         api_key: rawKey,
@@ -193,6 +203,7 @@ export function SettingsModal() {
     } catch {
       showToast('API Key saved locally in browser', 'success');
     }
+    setEditingKeyId(null);
   };
 
   const handleDeleteAPIKey = async (id: string) => {
@@ -217,7 +228,32 @@ export function SettingsModal() {
         ...prev,
         [id]: { ok: res.ok, msg: res.message }
       }));
-      if (res.ok) {
+      if (res.ok && keyObj) {
+        try {
+          const discovered = await discoverAPIModels(id, keyObj);
+          const existing = state.models.filter(m => m.provider !== keyObj.provider);
+          const discoveredConfigs: ModelConfig[] = discovered.map((model, index) => ({
+            id: `discovered-${keyObj.provider}-${model.id}`,
+            name: model.name,
+            provider: model.provider,
+            model_id: model.id,
+            description: model.description,
+            temperature: 0.7,
+            max_tokens: 4096,
+            is_enabled: true,
+            is_default: index === 0,
+            priority: index,
+          }));
+          const mergedModels = [...existing, ...discoveredConfigs];
+          dispatch({ type: 'SET_MODELS', payload: mergedModels });
+          try { localStorage.setItem('chaty_models', JSON.stringify(mergedModels)); } catch {}
+          setCheckResults(prev => ({ ...prev, [id]: { ok: true, msg: `Connection verified · ${discovered.length} chat models available` } }));
+          showToast(`${discovered.length} working ${keyObj.provider} models loaded`, 'success');
+        } catch (error) {
+          setCheckResults(prev => ({ ...prev, [id]: { ok: false, msg: error instanceof Error ? error.message : 'Model discovery failed' } }));
+          showToast('Connection worked, but model discovery failed', 'warning');
+        }
+      } else if (res.ok) {
         showToast('API Key verification succeeded!', 'success');
       } else {
         showToast(`Verification result: ${res.message}`, res.ok ? 'success' : 'warning');
@@ -278,17 +314,20 @@ export function SettingsModal() {
 
   const handleToggleModelEnabled = async (model: ModelConfig) => {
     const nextState = !model.is_enabled;
+    const nextModels = state.models.map(m => m.id === model.id ? { ...m, is_enabled: nextState } : m);
     try {
       const updated = await updateModel(model.id, { is_enabled: nextState });
       dispatch({
         type: 'SET_MODELS',
-        payload: state.models.map(m => m.id === model.id ? updated : m)
+        payload: nextModels.map(m => m.id === model.id ? updated : m)
       });
+      try { localStorage.setItem('chaty_models', JSON.stringify(nextModels.map(m => m.id === model.id ? updated : m))); } catch {}
     } catch {
       dispatch({
         type: 'SET_MODELS',
-        payload: state.models.map(m => m.id === model.id ? { ...m, is_enabled: nextState } : m)
+        payload: nextModels
       });
+      try { localStorage.setItem('chaty_models', JSON.stringify(nextModels)); } catch {}
     }
     showToast(`Model ${model.name} ${nextState ? 'enabled' : 'disabled'}`, 'success');
   };
@@ -697,6 +736,17 @@ export function SettingsModal() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-2.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingKeyId(key.id);
+                                    setNewKeyProvider(key.provider);
+                                    setNewKeyName(key.key_name);
+                                    setNewKeyValue(key.api_key || '');
+                                    setNewKeyUrl(key.base_url || '');
+                                  }}
+                                  className="text-[10px] font-mono uppercase text-fg-3 hover:text-fg"
+                                >Edit</button>
                                 <button
                                   type="button"
                                   onClick={() => handleCheckKey(key.id)}

@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       conversation_id,
       web_search,
       api_keys,
+      api_configs,
     } = body;
 
     if (!message) {
@@ -60,7 +61,8 @@ export async function POST(req: Request) {
       provider = 'groq';
     }
 
-    let apiKey = keys[provider] || keys[normalizeProvider(provider)];
+    const config = api_configs?.[provider] || api_configs?.[normalizeProvider(provider)];
+    let apiKey = config?.api_key || keys[provider] || keys[normalizeProvider(provider)];
     let activeProvider = provider;
 
     // Fallback to any available key
@@ -82,26 +84,36 @@ export async function POST(req: Request) {
 
     // ── Build provider endpoint ───────────────────────────────────────────
     let endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    let isAnthropic = false;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
     if (activeProvider === 'groq') {
-      endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+      endpoint = `${(config?.base_url || 'https://api.groq.com/openai/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
     } else if (activeProvider === 'openai') {
-      endpoint = 'https://api.openai.com/v1/chat/completions';
+      endpoint = `${(config?.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
     } else if (activeProvider === 'google') {
-      endpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+      endpoint = `${(config?.base_url || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
     } else if (activeProvider === 'nvidia_nim') {
-      endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
+      endpoint = `${(config?.base_url || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
     } else if (activeProvider === 'openrouter') {
-      endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+      endpoint = `${(config?.base_url || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
       if (web_search && !rawModelId.endsWith(':online')) {
         rawModelId = `${rawModelId}:online`;
       }
+    } else if (activeProvider === 'anthropic') {
+      endpoint = `${(config?.base_url || 'https://api.anthropic.com/v1').replace(/\/$/, '')}/messages`;
+      isAnthropic = true;
+      delete headers['Content-Type'];
+      headers['x-api-key'] = apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+      headers.Accept = 'text/event-stream';
+    } else if (activeProvider === 'ollama') {
+      endpoint = `${(config?.base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
     }
 
     // ── Web search augmentation ───────────────────────────────────────────
@@ -125,7 +137,13 @@ export async function POST(req: Request) {
     // ── Build messages ────────────────────────────────────────────────────
     const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const providerBody = {
+    const providerBody = isAnthropic ? {
+      model: rawModelId,
+      max_tokens: 4096,
+      system: `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant.`,
+      messages: [{ role: 'user', content: message + extraPrompt }],
+      stream: true,
+    } : {
       model: rawModelId,
       messages: [
         {
@@ -139,6 +157,7 @@ export async function POST(req: Request) {
       ],
       stream: true,
       temperature: 0.7,
+      ...(activeProvider === 'ollama' ? { stream: true } : {}),
     };
 
     // ── Call provider API (server-side, no CORS issues) ───────────────────
@@ -204,7 +223,7 @@ export async function POST(req: Request) {
 
               try {
                 const json = JSON.parse(dataStr);
-                const delta = json.choices?.[0]?.delta?.content;
+                const delta = json.choices?.[0]?.delta?.content || json.delta?.text || json.message?.content;
                 if (delta) {
                   const chunk = JSON.stringify({ type: 'chunk', content: delta });
                   controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));

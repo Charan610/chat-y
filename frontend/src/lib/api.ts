@@ -270,11 +270,16 @@ export async function streamChat(
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           const keysMap: Record<string, string> = {};
+          const configs: Record<string, { api_key: string; base_url?: string }> = {};
           for (const k of parsed) {
-            if (k.provider && k.api_key) keysMap[k.provider.toLowerCase()] = k.api_key;
+            if (k.provider && k.api_key && k.is_active !== false) {
+              keysMap[k.provider.toLowerCase()] = k.api_key;
+              configs[k.provider.toLowerCase()] = { api_key: k.api_key, base_url: k.base_url };
+            }
           }
           if (Object.keys(keysMap).length > 0) {
             enrichedReq.api_keys = keysMap;
+            enrichedReq.api_configs = configs;
           }
         }
       }
@@ -409,6 +414,22 @@ export async function checkAPIKey(id: string, keyObj?: APIKey): Promise<{ ok: bo
         : msg,
     };
   }
+}
+
+export interface DiscoveredModel {
+  id: string;
+  name: string;
+  provider: string;
+  description?: string;
+}
+
+export async function discoverAPIModels(id: string, keyObj: APIKey): Promise<DiscoveredModel[]> {
+  const res = await apiClient.post<{ models: DiscoveredModel[] }>(`/api/apikeys/${id}/models`, {
+    provider: keyObj.provider,
+    api_key: keyObj.api_key,
+    base_url: keyObj.base_url,
+  });
+  return res.models || [];
 }
 
 // ── Models ────────────────────────────────────────────────────────────────────

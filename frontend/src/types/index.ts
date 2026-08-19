@@ -123,6 +123,7 @@ export interface ChatRequest {
   web_search?: boolean;
   file_ids?: string[];
   api_keys?: Record<string, string>;
+  api_configs?: Record<string, { api_key: string; base_url?: string }>;
 }
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';

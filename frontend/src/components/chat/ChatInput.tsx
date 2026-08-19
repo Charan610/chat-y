@@ -30,7 +30,9 @@ export function ChatInput({
   const [isListening, setIsListening] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const microphoneStreamRef = useRef<MediaStream | null>(null);
   const baseValueRef = useRef<string>('');
+  const finalTranscriptRef = useRef<string>('');
   const valueRef = useRef<string>(value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +64,8 @@ export function ChatInput({
 
     // Request microphone permission first if available
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(() => {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        microphoneStreamRef.current = stream;
         startRecognition(SpeechRecognition);
       }).catch((err) => {
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -89,6 +92,7 @@ export function ChatInput({
       recognition.lang = 'en-US';
 
       baseValueRef.current = valueRef.current;
+      finalTranscriptRef.current = '';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -96,19 +100,18 @@ export function ChatInput({
       };
 
       recognition.onresult = (event: any) => {
-        let finalTranscript = '';
         let interimTranscript = '';
 
-        for (let i = 0; i < event.results.length; i++) {
+        for (let i = event.resultIndex || 0; i < event.results.length; i++) {
           const res = event.results[i];
           if (res.isFinal) {
-            finalTranscript += res[0].transcript;
+            finalTranscriptRef.current += res[0].transcript;
           } else {
             interimTranscript += res[0].transcript;
           }
         }
 
-        const currentSpeech = (finalTranscript + ' ' + interimTranscript).trim();
+        const currentSpeech = (finalTranscriptRef.current + ' ' + interimTranscript).trim();
         if (currentSpeech) {
           const base = baseValueRef.current;
           const separator = base && !base.endsWith(' ') ? ' ' : '';
@@ -124,11 +127,15 @@ export function ChatInput({
         }
         setIsListening(false);
         recognitionRef.current = null;
+        microphoneStreamRef.current?.getTracks().forEach(track => track.stop());
+        microphoneStreamRef.current = null;
       };
 
       recognition.onend = () => {
         setIsListening(false);
         recognitionRef.current = null;
+        microphoneStreamRef.current?.getTracks().forEach(track => track.stop());
+        microphoneStreamRef.current = null;
       };
 
       recognitionRef.current = recognition;
@@ -145,6 +152,7 @@ export function ChatInput({
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch {}
       }
+      microphoneStreamRef.current?.getTracks().forEach(track => track.stop());
     };
   }, []);
 
