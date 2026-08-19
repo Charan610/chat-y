@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { webSearch } from '@/lib/webSearch';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 // Server-side streaming chat proxy — avoids CORS issues by calling provider
 // APIs from the Next.js server instead of the browser.
 
