@@ -372,41 +372,14 @@ export async function deleteAPIKey(id: string): Promise<void> {
 
 export async function checkAPIKey(id: string, keyObj?: APIKey): Promise<{ ok: boolean; message: string }> {
   try {
-    const res = await apiClient.post<{ status: string; message?: string; http_status?: number }>(`/api/apikeys/${id}/health-check`);
+    // Send provider info so the server-side route can proxy the health check
+    const body = keyObj ? { provider: keyObj.provider, api_key: keyObj.api_key, base_url: keyObj.base_url } : undefined;
+    const res = await apiClient.post<{ status: string; message?: string; http_status?: number }>(`/api/apikeys/${id}/health-check`, body);
     return {
       ok: res.status === 'ok',
       message: res.message || (res.status === 'ok' ? 'Key is working' : `Key returned status: ${res.status}`),
     };
   } catch (err: unknown) {
-    if (keyObj && keyObj.api_key) {
-      try {
-        let testUrl = '';
-        const headers: Record<string, string> = {};
-        if (keyObj.provider === 'groq') {
-          testUrl = 'https://api.groq.com/openai/v1/models';
-          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
-        } else if (keyObj.provider === 'openai') {
-          testUrl = 'https://api.openai.com/v1/models';
-          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
-        } else if (keyObj.provider === 'nvidia_nim') {
-          testUrl = keyObj.base_url || 'https://integrate.api.nvidia.com/v1/models';
-          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
-        } else if (keyObj.provider === 'openrouter') {
-          testUrl = 'https://openrouter.ai/api/v1/models';
-          headers['Authorization'] = `Bearer ${keyObj.api_key}`;
-        }
-        if (testUrl) {
-          const directRes = await fetch(testUrl, { headers });
-          if (directRes.ok) {
-            return { ok: true, message: 'Key verified directly with provider!' };
-          } else {
-            return { ok: false, message: `Provider returned HTTP ${directRes.status}` };
-          }
-        }
-      } catch {
-        // network or CORS fallback
-      }
-    }
     const msg = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
