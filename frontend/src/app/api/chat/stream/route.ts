@@ -131,8 +131,12 @@ export async function POST(req: Request) {
 
     if (!providerRes.ok) {
       const errText = await providerRes.text().catch(() => '');
+      let errorMsg = `Provider error (${providerRes.status}): ${errText.slice(0, 200)}`;
+      if (providerRes.status === 401 || providerRes.status === 403) {
+        errorMsg = `Authentication failed: The ${activeProvider.toUpperCase()} API key is invalid or expired. Please check/update your key in Settings (⚙️) or switch to a different model in the model picker.`;
+      }
       return new Response(
-        `data: ${JSON.stringify({ type: 'error', error: `Provider error (${providerRes.status}): ${errText.slice(0, 200)}` })}\n\n`,
+        `data: ${JSON.stringify({ type: 'error', error: errorMsg })}\n\n`,
         { status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } }
       );
     }
