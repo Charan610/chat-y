@@ -1235,7 +1235,7 @@ export function SettingsModal() {
                     <span className="text-[9px] font-mono text-fg-4">api.groq.com</span>
                   </div>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it', 'llama-guard-3-8b'].map(m => (
+                    {['llama-3.3-70b-versatile', 'llama-3.2-3b-preview', 'mixtral-8x7b-32768', 'gemma2-9b-it', 'llama-guard-3-8b'].map(m => (
                       <div key={m} className="text-[10px] font-mono text-fg-3 bg-elevated px-2 py-1 rounded border border-line-2 truncate">{m}</div>
                     ))}
                   </div>

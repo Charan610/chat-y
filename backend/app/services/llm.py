@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # Pricing fallback table (per 1M tokens)
 FALLBACK_PRICING = {
     "groq/llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79},
-    "groq/llama-3.1-8b-instant": {"input": 0.05, "output": 0.08},
+    "groq/llama-3.2-3b-preview": {"input": 0.06, "output": 0.06},
     "groq/mixtral-8x7b-32768": {"input": 0.24, "output": 0.24},
     "groq/gemma2-9b-it": {"input": 0.20, "output": 0.20},
     "gpt-4o": {"input": 2.50, "output": 10.00},
