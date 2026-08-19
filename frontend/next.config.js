@@ -2,11 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '');
+    const backendUrl = process.env.BACKEND_URL || '';
     if (backendUrl) {
       return [
         {
-          source: '/api/:path((?!auth|user).*)',
+          source: '/api/:path((?!auth|user|users|chat|apikeys|conversations).*)',
           destination: `${backendUrl}/api/:path*`,
         },
         {

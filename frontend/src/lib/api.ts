@@ -260,18 +260,39 @@ export async function streamChat(
   signal?: AbortSignal
 ): Promise<void> {
   let conversationId = req.conversation_id || '';
+
+  // Inject API keys from localStorage so the server-side route can proxy calls
+  const enrichedReq = { ...req };
+  if (!enrichedReq.api_keys) {
+    try {
+      const raw = localStorage.getItem('chaty_api_keys');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const keysMap: Record<string, string> = {};
+          for (const k of parsed) {
+            if (k.provider && k.api_key) keysMap[k.provider.toLowerCase()] = k.api_key;
+          }
+          if (Object.keys(keysMap).length > 0) {
+            enrichedReq.api_keys = keysMap;
+          }
+        }
+      }
+    } catch {}
+  }
+
   try {
     const res = await fetch(`${BASE_URL}/api/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req),
+      body: JSON.stringify(enrichedReq),
       signal,
     });
     if (!res.ok) {
       const err = await res.text();
       const isHtml = err.includes('<!DOCTYPE html>') || err.includes('<html') || err.includes('This page could not be found');
       if (res.status === 404 || isHtml) {
-        const handledDirectly = await streamDirectCloud(req, onChunk, onMetadata, onDone, onError, signal);
+        const handledDirectly = await streamDirectCloud(enrichedReq, onChunk, onMetadata, onDone, onError, signal);
         if (handledDirectly) return;
         onError('Backend server offline. Please add your Groq or OpenAI API key in Settings to enable direct cloud chat.');
         return;
@@ -319,7 +340,7 @@ export async function streamChat(
     if (err instanceof Error && err.name === 'AbortError') return;
     const isHtmlErr = String(err).includes('<!DOCTYPE html>') || String(err).includes('This page could not be found');
     if (isHtmlErr) {
-      const handledDirectly = await streamDirectCloud(req, onChunk, onMetadata, onDone, onError, signal);
+      const handledDirectly = await streamDirectCloud(enrichedReq, onChunk, onMetadata, onDone, onError, signal);
       if (handledDirectly) return;
       onError('Backend server offline. Please add your Groq or OpenAI API key in Settings to enable direct cloud chat.');
       return;

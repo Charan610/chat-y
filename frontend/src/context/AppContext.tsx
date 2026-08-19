@@ -118,8 +118,9 @@ function loadConversationsFromStorage(userId?: string): Conversation[] {
       const userConvs = localStorage.getItem(`chaty_conversations_${userId}`);
       if (userConvs) {
         const parsed = JSON.parse(userConvs);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
+      return [];
     }
     const globalConvs = localStorage.getItem('chaty_conversations');
     if (globalConvs) {
@@ -596,14 +597,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Augment local WebLLM with real-time web search if enabled
+      let webSearchPrompt = '';
+      if (state.webSearchEnabled || /\b(today|latest|recent|news|current|who won|score|weather|this week|2026|right now|now|happened|price|stock)\b/i.test(content)) {
+        try {
+          const { webSearch } = await import('@/lib/webSearch');
+          const sResults = await webSearch(content, 5);
+          if (sResults && sResults.length > 0) {
+            const formatted = sResults
+              .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`)
+              .join('\n\n');
+            webSearchPrompt = `\n\n--- REAL-TIME WEB SEARCH RESULTS ---\n${formatted}\n\nINSTRUCTIONS: Answer the user's question using the real-time web search results above. Cite sources using markdown links like [1](URL), [2](URL).`;
+          }
+        } catch {}
+      }
+
       // Build messages array from conversation history
       const chatMessages: { role: 'user' | 'assistant' | 'system'; content: string }[] = [
-        { role: 'system', content: 'You are Chat-Y, a helpful AI assistant running locally in the user\'s browser via WebLLM. Be concise and helpful.' },
+        { role: 'system', content: 'You are Chat-Y, a helpful AI assistant running locally in the user\'s browser via WebLLM. Be accurate and helpful.' },
         ...state.messages.slice(-10).map(m => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         })),
-        { role: 'user' as const, content },
+        { role: 'user' as const, content: content + webSearchPrompt },
       ];
 
       const startTime = Date.now();

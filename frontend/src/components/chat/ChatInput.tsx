@@ -56,32 +56,45 @@ export function ChatInput({
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      showToast('Voice input is not supported in this browser. Try Chrome or Edge.', 'warning');
+      showToast('Voice input is not supported in this browser. Please use Chrome, Edge, or Safari.', 'warning');
       return;
     }
 
+    // Request microphone permission first if available
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(() => {
+        startRecognition(SpeechRecognition);
+      }).catch((err) => {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          showToast('Microphone access blocked. Please allow microphone permissions in your browser.', 'error');
+        } else {
+          startRecognition(SpeechRecognition);
+        }
+      });
+    } else {
+      startRecognition(SpeechRecognition);
+    }
+  }, [isListening, showToast]);
+
+  const startRecognition = (SpeechRecognitionClass: any) => {
     try {
       if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch {}
+        try { recognitionRef.current.abort(); } catch {}
         recognitionRef.current = null;
       }
 
-      const recognition = new SpeechRecognition();
+      const recognition = new SpeechRecognitionClass();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
-      // Record starting value before speech input
       baseValueRef.current = valueRef.current;
 
       recognition.onstart = () => {
         setIsListening(true);
-        showToast('Listening... Speak into microphone', 'info');
+        showToast('Listening... Speak into your microphone', 'info');
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onresult = (event: any) => {
         let finalTranscript = '';
         let interimTranscript = '';
@@ -103,9 +116,10 @@ export function ChatInput({
         }
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onerror = (event: any) => {
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        if (event.error === 'not-allowed') {
+          showToast('Microphone permission denied. Please allow microphone in browser settings.', 'error');
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
           showToast(`Voice input error: ${event.error}`, 'error');
         }
         setIsListening(false);
@@ -124,12 +138,12 @@ export function ChatInput({
       setIsListening(false);
       recognitionRef.current = null;
     }
-  }, [isListening, showToast]);
+  };
 
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try { recognitionRef.current.stop(); } catch {}
       }
     };
   }, []);
