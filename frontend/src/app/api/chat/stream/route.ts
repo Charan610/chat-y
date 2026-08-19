@@ -7,6 +7,14 @@ export const maxDuration = 60;
 // Server-side streaming chat proxy — avoids CORS issues by calling provider
 // APIs from the Next.js server instead of the browser.
 
+function normalizeProvider(p: string): string {
+  const clean = p.toLowerCase().trim();
+  if (clean === 'nvidia' || clean === 'nvidia_nim' || clean === 'nim') return 'nvidia_nim';
+  if (clean === 'google' || clean === 'gemini') return 'google';
+  if (clean === 'anthropic' || clean === 'claude') return 'anthropic';
+  return clean;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -26,7 +34,11 @@ export async function POST(req: Request) {
     let keys: Record<string, string> = {};
     if (api_keys && typeof api_keys === 'object') {
       for (const [k, v] of Object.entries(api_keys)) {
-        if (k && v && typeof v === 'string') keys[k.toLowerCase()] = v;
+        if (k && v && typeof v === 'string') {
+          const normKey = normalizeProvider(k);
+          keys[normKey] = v;
+          keys[k.toLowerCase()] = v;
+        }
       }
     }
 
@@ -36,30 +48,34 @@ export async function POST(req: Request) {
 
     if (modelStr.includes('/')) {
       const parts = modelStr.split('/');
-      provider = parts[0].toLowerCase();
+      provider = normalizeProvider(parts[0]);
       rawModelId = parts.slice(1).join('/');
     } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1')) {
       provider = 'openai';
     } else if (modelStr.startsWith('claude-')) {
       provider = 'anthropic';
+    } else if (modelStr.startsWith('gemini-') || modelStr.startsWith('gemini/')) {
+      provider = 'google';
     } else if (modelStr.startsWith('llama-') || modelStr.startsWith('mixtral-') || modelStr.startsWith('gemma')) {
       provider = 'groq';
     }
 
-    let apiKey = keys[provider];
+    let apiKey = keys[provider] || keys[normalizeProvider(provider)];
     let activeProvider = provider;
 
     // Fallback to any available key
     if (!apiKey) {
       if (keys['groq']) { activeProvider = 'groq'; apiKey = keys['groq']; rawModelId = 'llama-3.3-70b-versatile'; }
       else if (keys['openai']) { activeProvider = 'openai'; apiKey = keys['openai']; rawModelId = 'gpt-4o-mini'; }
+      else if (keys['google']) { activeProvider = 'google'; apiKey = keys['google']; rawModelId = 'gemini-1.5-flash'; }
       else if (keys['nvidia_nim']) { activeProvider = 'nvidia_nim'; apiKey = keys['nvidia_nim']; rawModelId = 'meta/llama-3.1-70b-instruct'; }
       else if (keys['openrouter']) { activeProvider = 'openrouter'; apiKey = keys['openrouter']; rawModelId = 'meta-llama/llama-3.3-70b-instruct'; }
+      else if (keys['anthropic']) { activeProvider = 'anthropic'; apiKey = keys['anthropic']; rawModelId = 'claude-3-5-haiku-20241022'; }
     }
 
     if (!apiKey) {
       return new Response(
-        `data: ${JSON.stringify({ type: 'error', error: 'No API key configured. Please add your API key in Settings.' })}\n\n`,
+        `data: ${JSON.stringify({ type: 'error', error: `No active API key found for ${activeProvider}. Please enter your ${activeProvider.toUpperCase()} API key in Settings (⚙️) or choose a free in-browser WebLLM model.` })}\n\n`,
         { status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } }
       );
     }
@@ -73,6 +89,9 @@ export async function POST(req: Request) {
       headers['Authorization'] = `Bearer ${apiKey}`;
     } else if (activeProvider === 'openai') {
       endpoint = 'https://api.openai.com/v1/chat/completions';
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    } else if (activeProvider === 'google') {
+      endpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
       headers['Authorization'] = `Bearer ${apiKey}`;
     } else if (activeProvider === 'nvidia_nim') {
       endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
@@ -133,7 +152,7 @@ export async function POST(req: Request) {
       const errText = await providerRes.text().catch(() => '');
       let errorMsg = `Provider error (${providerRes.status}): ${errText.slice(0, 200)}`;
       if (providerRes.status === 401 || providerRes.status === 403) {
-        errorMsg = `Authentication failed: The ${activeProvider.toUpperCase()} API key is invalid or expired. Please check/update your key in Settings (⚙️) or switch to a different model in the model picker.`;
+        errorMsg = `Authentication failed: The ${activeProvider.toUpperCase()} API key is invalid or expired. Please check your key in Settings (⚙️) or select another model.`;
       }
       return new Response(
         `data: ${JSON.stringify({ type: 'error', error: errorMsg })}\n\n`,
