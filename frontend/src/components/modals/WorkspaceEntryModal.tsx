@@ -19,7 +19,7 @@ export function WorkspaceEntryModal({
   const webBtnRef = useRef<HTMLButtonElement>(null);
 
   const installUrl =
-    process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/download';
+    process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/chat-y.apk';
 
   // Detect Android user agent for smart default highlight
   useEffect(() => {
@@ -85,7 +85,12 @@ export function WorkspaceEntryModal({
     try {
       localStorage.setItem('chaty_entry_pref', 'android');
     } catch {}
-    window.open(installUrl, '_blank', 'noopener,noreferrer');
+    const link = document.createElement('a');
+    link.href = installUrl;
+    link.download = 'chat-y.apk';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     onClose();
   };
 

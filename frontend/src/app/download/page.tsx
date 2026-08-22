@@ -25,10 +25,9 @@ export default function DownloadPage() {
   const [copiedSha, setCopiedSha] = useState(false);
 
   const installUrl =
-    process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL ||
-    'https://play.google.com/apps/internaltest/placeholder-chat-y-android';
+    process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/chat-y.apk';
   const sha256Checksum =
-    'a7f9b8c3d2e1045f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f';
+    'f3e78b07cd5ec757a1fdd3ef50593126744104fda313009b56dcf25c6c921fb1';
   const repoUrl = 'https://github.com/Charan610/chat-y';
 
   const handleCopySha = () => {
@@ -167,8 +166,7 @@ export default function DownloadPage() {
         {/* Primary CTA Button */}
         <a
           href={installUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+          download="chat-y.apk"
           className="w-full py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 font-semibold text-sm transition-all duration-200 shadow-lg active:scale-[0.98]"
           style={{
             background: 'linear-gradient(135deg, #4FB8A6 0%, #33877A 100%)',
@@ -177,7 +175,7 @@ export default function DownloadPage() {
           }}
         >
           <Download size={18} />
-          <span>Install from Play Internal Sharing</span>
+          <span>Direct Download APK (17 MB)</span>
         </a>
 
         {/* Version & Build Info */}

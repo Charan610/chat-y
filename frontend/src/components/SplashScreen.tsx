@@ -155,9 +155,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         }}
       >
         <a
-          href={process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/download'}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/chat-y.apk'}
+          download="chat-y.apk"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -329,9 +328,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         >
           {/* Direct Download Android App Button */}
           <a
-            href={process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/download'}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/chat-y.apk'}
+            download="chat-y.apk"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
