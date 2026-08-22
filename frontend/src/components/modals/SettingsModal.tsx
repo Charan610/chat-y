@@ -48,7 +48,7 @@ import {
 import type { APIKey, ModelConfig, Memory, Provider, AnalyticsData } from '@/types';
 
 export function SettingsModal() {
-  const { state, dispatch, showToast, loadWebLLM } = useApp();
+  const { state, dispatch, showToast, loadWebLLM, user } = useApp();
   const isOpen = state.settingsOpen;
   const activeTab = state.settingsTab;
 
@@ -95,6 +95,43 @@ export function SettingsModal() {
 
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  const [profileName, setProfileName] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('chaty_user_name') || user?.name || '';
+      setProfileName(stored);
+    }
+  }, [isOpen, user?.name]);
+
+  const handleSaveProfileName = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = profileName.trim();
+    if (!trimmed) {
+      showToast('Please enter a valid display name', 'warning');
+      return;
+    }
+    try {
+      localStorage.setItem('chaty_user_name', trimmed);
+      const existingSession = localStorage.getItem('chaty_user_session');
+      let sessionObj = {
+        id: user?.id || 'usr_main',
+        email: `${trimmed.toLowerCase().replace(/\s+/g, '')}@workspace.local`,
+        name: trimmed,
+      };
+      if (existingSession) {
+        try {
+          const parsed = JSON.parse(existingSession);
+          sessionObj = { ...parsed, name: trimmed };
+        } catch {}
+      }
+      localStorage.setItem('chaty_user_session', JSON.stringify(sessionObj));
+      showToast(`Display name saved as "${trimmed}"`, 'success');
+    } catch {
+      showToast('Failed to save display name', 'error');
+    }
+  };
 
   useEffect(() => {
     setActiveSubTab(activeTab);
@@ -473,6 +510,44 @@ export function SettingsModal() {
             {/* TAB: GENERAL */}
             {activeSubTab === 'general' && (
               <div className="flex flex-col gap-6 max-w-[550px]">
+                {/* User Profile & Display Name */}
+                <div className="flex flex-col gap-3 p-4 rounded-lg bg-surface border border-line">
+                  <div className="font-mono text-[10px] tracking-[1px] uppercase text-fg-3">User Profile & Display Name</div>
+                  <form onSubmit={handleSaveProfileName} className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-accent-bg border border-accent/30 text-accent flex items-center justify-center font-bold text-sm shrink-0">
+                      {(profileName.trim() || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <input
+                        type="text"
+                        placeholder="Enter your display name..."
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        className="input text-xs w-full"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn btn-primary text-xs py-1.5 px-3 shrink-0 cursor-pointer"
+                    >
+                      Save Name
+                    </button>
+                  </form>
+                  <div className="flex items-center justify-between text-[11px] font-mono text-fg-4 pt-2 border-t border-line">
+                    <span>Workspace ID: <span className="text-accent font-semibold">{user?.id || 'usr_main'}</span></span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(user?.id || 'usr_main');
+                        showToast('Workspace ID copied', 'info');
+                      }}
+                      className="hover:text-fg transition-colors cursor-pointer text-xs"
+                    >
+                      Copy ID
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold text-fg-2">Default Workspace Model</label>
                   <select

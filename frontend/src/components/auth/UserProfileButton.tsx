@@ -48,6 +48,12 @@ export function UserProfileButton() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [currentName, setCurrentName] = useState(activeName);
+
+  useEffect(() => {
+    setCurrentName(activeName);
+  }, [activeName]);
+
   const handleCopyId = () => {
     navigator.clipboard.writeText(activeId);
     setCopiedId(true);
@@ -68,9 +74,9 @@ export function UserProfileButton() {
       };
       localStorage.setItem('chaty_user_session', JSON.stringify(sessionObj));
     } catch {}
+    setCurrentName(newName);
     setMode('view');
     showToast(`Profile name updated to ${newName}`, 'success');
-    window.location.reload();
   };
 
   const handleSwitchToExistingId = (e: React.FormEvent) => {
@@ -137,7 +143,7 @@ export function UserProfileButton() {
     }
   };
 
-  const initial = activeName.charAt(0).toUpperCase();
+  const initial = (currentName || 'U').charAt(0).toUpperCase();
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -145,13 +151,13 @@ export function UserProfileButton() {
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
         className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-[#17171A] hover:bg-[#1F1F23] border border-[#2E2E35] hover:border-[#FF8A3D]/40 transition-all duration-200 cursor-pointer text-xs group"
-        title={`Workspace User: ${activeName} (${activeId})`}
+        title={`Workspace User: ${currentName} (${activeId})`}
       >
         <div className="w-5 h-5 rounded-full bg-[#FF8A3D]/15 border border-[#FF8A3D]/30 text-[#FF8A3D] flex items-center justify-center font-bold text-[10px] shadow-[0_0_8px_rgba(255,138,61,0.2)]">
           {initial}
         </div>
         <span className="font-medium text-[#F4F4F5] max-w-[100px] truncate hidden sm:inline group-hover:text-[#FF8A3D] transition-colors">
-          {activeName}
+          {currentName}
         </span>
         <ChevronDown size={11} className="text-[#71717A] group-hover:text-[#F4F4F5] transition-transform duration-200 group-hover:translate-y-[1px]" />
       </button>
@@ -167,7 +173,7 @@ export function UserProfileButton() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between">
-                <div className="font-bold text-[#F4F4F5] truncate text-sm">{activeName}</div>
+                <div className="font-bold text-[#F4F4F5] truncate text-sm">{currentName}</div>
                 <button
                   onClick={() => setMode(mode === 'edit_name' ? 'view' : 'edit_name')}
                   className="p-1 rounded text-[#71717A] hover:text-[#FF8A3D] hover:bg-[#1F1F23] transition-colors"
