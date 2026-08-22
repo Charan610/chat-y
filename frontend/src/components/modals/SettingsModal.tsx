@@ -505,6 +505,31 @@ export function SettingsModal() {
                   />
                   <p className="text-[10px] font-mono text-fg-4 mt-0.5">Applies system-level context constraints to new reasoning sequences.</p>
                 </div>
+
+                <div className="flex flex-col gap-2 pt-2 border-t border-line">
+                  <label className="text-xs font-semibold text-fg-2">Workspace Entry Preference</label>
+                  <div className="flex items-center justify-between p-3 rounded bg-surface border border-line">
+                    <div>
+                      <div className="text-xs text-fg">Landing Page Choice Dialog</div>
+                      <div className="text-[10px] font-mono text-fg-4 mt-0.5">
+                        Choose between continuing in web browser or downloading the Android app.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          localStorage.removeItem('chaty_entry_pref');
+                          showToast('Entry preference reset. You will be asked on next visit.', 'info');
+                        } catch {}
+                      }}
+                      className="btn btn-secondary text-xs py-1 px-2.5 flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Reset Choice
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 

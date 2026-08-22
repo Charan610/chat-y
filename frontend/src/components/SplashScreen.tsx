@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { Smartphone, Download, ArrowRight } from 'lucide-react';
+import { WorkspaceEntryModal } from './modals/WorkspaceEntryModal';
 
 interface SplashScreenProps {
   onFinish?: () => void;
@@ -94,18 +96,35 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
+  const [showEntryModal, setShowEntryModal] = useState(false);
+
   const handleEnter = () => {
     setPhase(3);
     setTimeout(() => onFinish?.(), 600);
   };
 
-  // Auto-enter after delay if user doesn't click
+  const handleEnterClick = () => {
+    try {
+      const pref = localStorage.getItem('chaty_entry_pref');
+      if (pref === 'web') {
+        handleEnter();
+        return;
+      }
+    } catch {}
+    setShowEntryModal(true);
+  };
+
+  // Auto-enter after delay only if user explicitly preferred web
   useEffect(() => {
-    if (phase !== 2) return;
-    const autoEnter = setTimeout(handleEnter, 8000);
-    return () => clearTimeout(autoEnter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+    if (phase !== 2 || showEntryModal) return;
+    try {
+      const pref = localStorage.getItem('chaty_entry_pref');
+      if (pref === 'web') {
+        const autoEnter = setTimeout(handleEnter, 8000);
+        return () => clearTimeout(autoEnter);
+      }
+    } catch {}
+  }, [phase, showEntryModal]);
 
   return (
     <div
@@ -121,10 +140,56 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         overflow: 'hidden',
         opacity: phase === 3 ? 0 : 1,
         transition: 'opacity 600ms cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: phase === 2 ? 'pointer' : 'default',
       }}
-      onClick={phase === 2 ? handleEnter : undefined}
     >
+      {/* Top Right Quick Download Badge */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 20,
+          right: 20,
+          zIndex: 100,
+          opacity: phase >= 2 ? 1 : 0,
+          transform: phase >= 2 ? 'translateY(0)' : 'translateY(-6px)',
+          transition: 'all 500ms cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
+        <a
+          href={process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/download'}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(255, 138, 61, 0.08)',
+            border: '1px solid rgba(255, 138, 61, 0.3)',
+            color: '#FF8A3D',
+            fontFamily: "'Geist Mono', monospace",
+            fontSize: 11,
+            padding: '7px 16px',
+            borderRadius: 100,
+            textDecoration: 'none',
+            transition: 'all 200ms ease',
+            letterSpacing: '0.04em',
+            userSelect: 'none',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(255, 138, 61, 0.18)';
+            e.currentTarget.style.borderColor = '#FF8A3D';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(255, 138, 61, 0.08)';
+            e.currentTarget.style.borderColor = 'rgba(255, 138, 61, 0.3)';
+            e.currentTarget.style.transform = 'none';
+          }}
+        >
+          <Download size={13} />
+          <span>Download Android App</span>
+        </a>
+      </div>
+
       {/* Particle canvas */}
       <canvas
         ref={canvasRef}
@@ -247,45 +312,98 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           }}
         />
 
-        {/* Enter prompt */}
+        {/* Action Buttons: Download Android App + Enter Workspace */}
         <div
           style={{
             marginTop: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
             opacity: phase >= 2 ? 1 : 0,
             transform: phase >= 2 ? 'translateY(0)' : 'translateY(6px)',
             transition: 'all 500ms cubic-bezier(0.16, 1, 0.3, 1)',
+            zIndex: 10,
           }}
         >
-          <button
-            onClick={handleEnter}
+          {/* Direct Download Android App Button */}
+          <a
+            href={process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/download'}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              background: 'none',
-              border: '1px solid rgba(255, 138, 61, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'linear-gradient(135deg, rgba(255, 138, 61, 0.15) 0%, rgba(255, 138, 61, 0.05) 100%)',
+              border: '1px solid #FF8A3D',
               color: '#FF8A3D',
               fontFamily: "'Geist Mono', monospace",
               fontSize: 11,
-              letterSpacing: '0.12em',
-              padding: '10px 28px',
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              padding: '10px 22px',
               borderRadius: 100,
               cursor: 'pointer',
-              transition: 'all 300ms ease',
+              textDecoration: 'none',
+              transition: 'all 250ms ease',
+              userSelect: 'none',
+              textTransform: 'uppercase',
+              boxShadow: '0 0 16px rgba(255, 138, 61, 0.18)',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#FF8A3D';
+              e.currentTarget.style.color = '#0A0A0B';
+              e.currentTarget.style.boxShadow = '0 0 24px rgba(255, 138, 61, 0.5)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 138, 61, 0.15) 0%, rgba(255, 138, 61, 0.05) 100%)';
+              e.currentTarget.style.color = '#FF8A3D';
+              e.currentTarget.style.boxShadow = '0 0 16px rgba(255, 138, 61, 0.18)';
+              e.currentTarget.style.transform = 'none';
+            }}
+          >
+            <Smartphone size={14} />
+            <span>Download Android App</span>
+          </a>
+
+          {/* Enter Workspace Button */}
+          <button
+            onClick={handleEnterClick}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              color: '#E4E4E7',
+              fontFamily: "'Geist Mono', monospace",
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              padding: '10px 22px',
+              borderRadius: 100,
+              cursor: 'pointer',
+              transition: 'all 250ms ease',
               userSelect: 'none',
               textTransform: 'uppercase',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#FF8A3D';
-              e.currentTarget.style.color = '#0A0A0B';
-              e.currentTarget.style.background = '#FF8A3D';
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 138, 61, 0.4)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+              e.currentTarget.style.color = '#FFFFFF';
+              e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(255, 138, 61, 0.3)';
-              e.currentTarget.style.color = '#FF8A3D';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
               e.currentTarget.style.background = 'none';
-              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.color = '#E4E4E7';
+              e.currentTarget.style.transform = 'none';
             }}
           >
-            enter workspace →
+            <span>Enter Workspace</span>
+            <ArrowRight size={13} />
           </button>
         </div>
 
@@ -319,6 +437,16 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           ))}
         </div>
       </div>
+
+      {/* Choice Interstitial Modal */}
+      <WorkspaceEntryModal
+        isOpen={showEntryModal}
+        onClose={() => setShowEntryModal(false)}
+        onSelectWeb={() => {
+          setShowEntryModal(false);
+          handleEnter();
+        }}
+      />
     </div>
   );
 }
