@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Menu,
   ChevronDown,
@@ -14,6 +15,7 @@ import {
   Copy,
   Key,
   X,
+  Smartphone,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { ModelPickerModal } from '@/components/modals/ModelPickerModal';
@@ -271,6 +273,34 @@ export function TopNav() {
 
           {/* User Persona & Profile Management */}
           <UserProfileButton />
+
+          {/* Android App Download link */}
+          <Link
+            href="/download"
+            className="touch-btn hidden sm:flex"
+            title="Download Chat-Y Android App"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--fg-4)',
+              cursor: 'pointer',
+              padding: 6,
+              borderRadius: 6,
+              transition: 'color 150ms ease, background 150ms ease',
+              alignItems: 'center',
+              textDecoration: 'none',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#4FB8A6';
+              e.currentTarget.style.background = 'var(--hover)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--fg-4)';
+              e.currentTarget.style.background = 'none';
+            }}
+          >
+            <Smartphone size={15} />
+          </Link>
 
           {/* Settings button */}
           <button
