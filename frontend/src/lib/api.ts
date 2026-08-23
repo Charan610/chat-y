@@ -156,41 +156,61 @@ export async function streamDirectCloud(
   if (activeProvider === 'groq') {
     endpoint = 'https://api.groq.com/openai/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
-    rawModelId = rawModelId.replace(/^groq\//, '');
-    if (rawModelId === 'llama-3.2-3b-preview' || rawModelId === 'llama-3.2-1b-preview' || rawModelId === 'llama3-70b-8192') {
+    let m = rawModelId.replace(/^groq\//, '').trim();
+    if (m.includes('/')) m = m.split('/').pop() || m;
+    if (m === 'llama-3.2-3b-preview' || m === 'llama-3.2-1b-preview' || m === 'llama3-70b-8192' || m === 'llama-3.1-70b-versatile') {
       rawModelId = 'llama-3.1-8b-instant';
-    }
-  } else if (activeProvider === 'openai') {
-    endpoint = 'https://api.openai.com/v1/chat/completions';
-    headers['Authorization'] = `Bearer ${apiKey}`;
-    rawModelId = rawModelId.replace(/^openai\//, '');
-  } else if (activeProvider === 'google') {
-    endpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-    headers['Authorization'] = `Bearer ${apiKey}`;
-    rawModelId = rawModelId.replace(/^(google\/|gemini\/)+/, '');
-    if (!rawModelId.startsWith('gemini-')) {
-      rawModelId = `gemini-${rawModelId}`;
-    }
-  } else if (activeProvider === 'nvidia_nim') {
-    endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
-    headers['Authorization'] = `Bearer ${apiKey}`;
-    rawModelId = rawModelId.replace(/^nvidia_nim\//, '');
-    if (!rawModelId.includes('/')) {
-      if (rawModelId.startsWith('llama') || rawModelId.startsWith('meta')) {
-        rawModelId = `meta/${rawModelId}`;
-      } else {
-        rawModelId = `nvidia/${rawModelId}`;
-      }
+    } else if (m === 'llama-3.3-70b-instruct' || m === 'llama-3.3-70b') {
+      rawModelId = 'llama-3.3-70b-versatile';
+    } else {
+      rawModelId = m;
     }
   } else if (activeProvider === 'openrouter') {
     endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
     headers['HTTP-Referer'] = 'https://chat-y.local';
     headers['X-Title'] = 'Chat-Y';
-    rawModelId = rawModelId.replace(/^openrouter\//, '');
+    let m = rawModelId.replace(/^openrouter\//, '').trim();
+    if (m === 'llama-3.3-70b-versatile' || m === 'llama-3.3-70b') m = 'meta-llama/llama-3.3-70b-instruct';
+    else if (m === 'llama-3.1-8b-instant' || m === 'llama-3.1-8b') m = 'meta-llama/llama-3.1-8b-instruct';
+    else if (m === 'llama-3.2-3b-preview' || m === 'llama-3.2-3b-instruct' || m === 'llama-3.2-3b') m = 'meta-llama/llama-3.2-3b-instruct';
+    else if (m === 'mixtral-8x7b-32768') m = 'mistralai/mixtral-8x7b-instruct';
+    else if (m === 'gemma2-9b-it') m = 'google/gemma-2-9b-it';
+    else if (m === 'deepseek-chat' || m === 'deepseek-v4-flash-0731') m = `deepseek/${m}`;
+    else if (m === 'deepseek-r1') m = 'deepseek/deepseek-r1';
+    else if (m === 'gpt-4o' || m === 'gpt-4o-mini') m = `openai/${m}`;
+    else if (!m.includes('/')) {
+      if (m.startsWith('llama')) m = `meta-llama/${m}`;
+      else if (m.startsWith('qwen')) m = `qwen/${m}`;
+    }
+    rawModelId = m;
     if (req.web_search && !rawModelId.endsWith(':online')) {
       rawModelId = `${rawModelId}:online`;
     }
+  } else if (activeProvider === 'openai') {
+    endpoint = 'https://api.openai.com/v1/chat/completions';
+    headers['Authorization'] = `Bearer ${apiKey}`;
+    let m = rawModelId.replace(/^openai\//, '').trim();
+    if (m.includes('/')) m = m.split('/').pop() || m;
+    if (m.startsWith('llama') || m.startsWith('mixtral') || m.startsWith('gemma')) rawModelId = 'gpt-4o-mini';
+    else rawModelId = m;
+  } else if (activeProvider === 'google') {
+    endpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+    headers['Authorization'] = `Bearer ${apiKey}`;
+    let m = rawModelId.replace(/^(google\/|gemini\/)+/, '').trim();
+    if (m.startsWith('llama') || m.startsWith('mixtral') || m.startsWith('gemma')) rawModelId = 'gemini-1.5-flash';
+    else if (!m.startsWith('gemini-')) rawModelId = `gemini-${m}`;
+    else rawModelId = m;
+  } else if (activeProvider === 'nvidia_nim') {
+    endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
+    headers['Authorization'] = `Bearer ${apiKey}`;
+    let m = rawModelId.replace(/^nvidia_nim\//, '').trim();
+    if (m === 'llama-3.3-70b-versatile' || m === 'llama-3.3-70b') rawModelId = 'meta/llama-3.3-70b-instruct';
+    else if (m === 'llama-3.1-8b-instant' || m === 'llama-3.1-8b') rawModelId = 'meta/llama-3.1-8b-instruct';
+    else if (!m.includes('/')) {
+      if (m.startsWith('llama') || m.startsWith('meta')) rawModelId = `meta/${m}`;
+      else rawModelId = `nvidia/${m}`;
+    } else rawModelId = m;
   }
 
   const convId = req.conversation_id || `conv-${Date.now()}`;

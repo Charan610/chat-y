@@ -15,6 +15,72 @@ function normalizeProvider(p: string): string {
   return clean;
 }
 
+// ── Provider Model Mappers ─────────────────────────────────────────────
+function mapToOpenRouterModel(model: string): string {
+  let m = model.replace(/^openrouter\//, '').trim();
+  if (m === 'llama-3.3-70b-versatile' || m === 'llama-3.3-70b') return 'meta-llama/llama-3.3-70b-instruct';
+  if (m === 'llama-3.1-8b-instant' || m === 'llama-3.1-8b') return 'meta-llama/llama-3.1-8b-instruct';
+  if (m === 'llama-3.2-3b-preview' || m === 'llama-3.2-3b-instruct' || m === 'llama-3.2-3b') return 'meta-llama/llama-3.2-3b-instruct';
+  if (m === 'llama-3.2-1b-preview' || m === 'llama-3.2-1b-instruct' || m === 'llama-3.2-1b') return 'meta-llama/llama-3.2-1b-instruct';
+  if (m === 'mixtral-8x7b-32768' || m === 'mixtral-8x7b') return 'mistralai/mixtral-8x7b-instruct';
+  if (m === 'gemma2-9b-it' || m === 'gemma-2-9b-it') return 'google/gemma-2-9b-it';
+  if (m === 'deepseek-chat' || m === 'deepseek-v4-flash-0731' || m === 'deepseek-coder') return `deepseek/${m}`;
+  if (m === 'deepseek-r1') return 'deepseek/deepseek-r1';
+  if (m === 'gpt-4o' || m === 'gpt-4o-mini' || m === 'o1' || m === 'o1-mini') return `openai/${m}`;
+  if (m.startsWith('claude-')) return `anthropic/${m}`;
+  if (m.startsWith('gemini-')) return `google/${m}`;
+  if (!m.includes('/')) {
+    if (m.startsWith('llama')) return `meta-llama/${m}`;
+    if (m.startsWith('qwen')) return `qwen/${m}`;
+    if (m.startsWith('mistral')) return `mistralai/${m}`;
+  }
+  return m;
+}
+
+function mapToGroqModel(model: string): string {
+  let m = model.replace(/^groq\//, '').trim();
+  if (m.includes('/')) m = m.split('/').pop() || m;
+  if (m === 'llama-3.2-3b-preview' || m === 'llama-3.2-1b-preview' || m === 'llama3-70b-8192' || m === 'llama-3.1-70b-versatile') {
+    return 'llama-3.1-8b-instant';
+  }
+  if (m === 'llama-3.3-70b-instruct' || m === 'llama-3.3-70b') return 'llama-3.3-70b-versatile';
+  if (m === 'llama-3.1-8b') return 'llama-3.1-8b-instant';
+  return m;
+}
+
+function mapToNvidiaModel(model: string): string {
+  let m = model.replace(/^nvidia_nim\//, '').trim();
+  if (m === 'llama-3.3-70b-versatile' || m === 'llama-3.3-70b') return 'meta/llama-3.3-70b-instruct';
+  if (m === 'llama-3.1-8b-instant' || m === 'llama-3.1-8b') return 'meta/llama-3.1-8b-instruct';
+  if (m === 'nemotron-3-ultra-550b-a55b') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+  if (!m.includes('/')) {
+    if (m.startsWith('llama') || m.startsWith('meta')) return `meta/${m}`;
+    return `nvidia/${m}`;
+  }
+  return m;
+}
+
+function mapToGoogleModel(model: string): string {
+  let m = model.replace(/^(google\/|gemini\/)+/, '').trim();
+  if (m.startsWith('llama') || m.startsWith('mixtral') || m.startsWith('gemma')) return 'gemini-1.5-flash';
+  if (!m.startsWith('gemini-')) return `gemini-${m}`;
+  return m;
+}
+
+function mapToOpenAIModel(model: string): string {
+  let m = model.replace(/^openai\//, '').trim();
+  if (m.includes('/')) m = m.split('/').pop() || m;
+  if (m.startsWith('llama') || m.startsWith('mixtral') || m.startsWith('gemma') || m.startsWith('claude')) return 'gpt-4o-mini';
+  return m;
+}
+
+function mapToAnthropicModel(model: string): string {
+  let m = model.replace(/^anthropic\//, '').trim();
+  if (m.includes('/')) m = m.split('/').pop() || m;
+  if (m.startsWith('llama') || m.startsWith('mixtral') || m.startsWith('gemma') || m.startsWith('gpt')) return 'claude-3-5-haiku-20241022';
+  return m;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -74,12 +140,12 @@ export async function POST(req: Request) {
 
     // Fallback to any available key
     if (!apiKey) {
-      if (keys['openrouter']) { activeProvider = 'openrouter'; apiKey = keys['openrouter']; rawModelId = 'meta-llama/llama-3.3-70b-instruct'; }
-      else if (keys['groq']) { activeProvider = 'groq'; apiKey = keys['groq']; rawModelId = 'llama-3.3-70b-versatile'; }
-      else if (keys['openai']) { activeProvider = 'openai'; apiKey = keys['openai']; rawModelId = 'gpt-4o-mini'; }
-      else if (keys['google']) { activeProvider = 'google'; apiKey = keys['google']; rawModelId = 'gemini-1.5-flash'; }
-      else if (keys['nvidia_nim']) { activeProvider = 'nvidia_nim'; apiKey = keys['nvidia_nim']; rawModelId = 'meta/llama-3.1-70b-instruct'; }
-      else if (keys['anthropic']) { activeProvider = 'anthropic'; apiKey = keys['anthropic']; rawModelId = 'claude-3-5-haiku-20241022'; }
+      if (keys['openrouter']) { activeProvider = 'openrouter'; apiKey = keys['openrouter']; }
+      else if (keys['groq']) { activeProvider = 'groq'; apiKey = keys['groq']; }
+      else if (keys['openai']) { activeProvider = 'openai'; apiKey = keys['openai']; }
+      else if (keys['google']) { activeProvider = 'google'; apiKey = keys['google']; }
+      else if (keys['nvidia_nim']) { activeProvider = 'nvidia_nim'; apiKey = keys['nvidia_nim']; }
+      else if (keys['anthropic']) { activeProvider = 'anthropic'; apiKey = keys['anthropic']; }
     }
 
     if (!apiKey) {
@@ -89,7 +155,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ── Build provider endpoint ───────────────────────────────────────────
+    // ── Build provider endpoint & map model ID ────────────────────────────
     let endpoint = 'https://api.groq.com/openai/v1/chat/completions';
     let isAnthropic = false;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -97,41 +163,28 @@ export async function POST(req: Request) {
     if (activeProvider === 'groq') {
       endpoint = `${(config?.base_url || 'https://api.groq.com/openai/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
-      rawModelId = rawModelId.replace(/^groq\//, '');
-      if (rawModelId === 'llama-3.2-3b-preview' || rawModelId === 'llama-3.2-1b-preview' || rawModelId === 'llama3-70b-8192') {
-        rawModelId = 'llama-3.1-8b-instant';
-      }
-    } else if (activeProvider === 'openai') {
-      endpoint = `${(config?.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/chat/completions`;
-      headers['Authorization'] = `Bearer ${apiKey}`;
-      rawModelId = rawModelId.replace(/^openai\//, '');
-    } else if (activeProvider === 'google') {
-      endpoint = `${(config?.base_url || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/$/, '')}/chat/completions`;
-      headers['Authorization'] = `Bearer ${apiKey}`;
-      rawModelId = rawModelId.replace(/^(google\/|gemini\/)+/, '');
-      if (!rawModelId.startsWith('gemini-')) {
-        rawModelId = `gemini-${rawModelId}`;
-      }
-    } else if (activeProvider === 'nvidia_nim') {
-      endpoint = `${(config?.base_url || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '')}/chat/completions`;
-      headers['Authorization'] = `Bearer ${apiKey}`;
-      rawModelId = rawModelId.replace(/^nvidia_nim\//, '');
-      if (!rawModelId.includes('/')) {
-        if (rawModelId.startsWith('llama') || rawModelId.startsWith('meta')) {
-          rawModelId = `meta/${rawModelId}`;
-        } else {
-          rawModelId = `nvidia/${rawModelId}`;
-        }
-      }
+      rawModelId = mapToGroqModel(rawModelId);
     } else if (activeProvider === 'openrouter') {
       endpoint = `${(config?.base_url || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
       headers['HTTP-Referer'] = 'https://chat-y.local';
       headers['X-Title'] = 'Chat-Y';
-      rawModelId = rawModelId.replace(/^openrouter\//, '');
+      rawModelId = mapToOpenRouterModel(rawModelId);
       if (web_search && !rawModelId.endsWith(':online')) {
         rawModelId = `${rawModelId}:online`;
       }
+    } else if (activeProvider === 'openai') {
+      endpoint = `${(config?.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/chat/completions`;
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      rawModelId = mapToOpenAIModel(rawModelId);
+    } else if (activeProvider === 'google') {
+      endpoint = `${(config?.base_url || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/$/, '')}/chat/completions`;
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      rawModelId = mapToGoogleModel(rawModelId);
+    } else if (activeProvider === 'nvidia_nim') {
+      endpoint = `${(config?.base_url || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '')}/chat/completions`;
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      rawModelId = mapToNvidiaModel(rawModelId);
     } else if (activeProvider === 'anthropic') {
       endpoint = `${(config?.base_url || 'https://api.anthropic.com/v1').replace(/\/$/, '')}/messages`;
       isAnthropic = true;
@@ -139,7 +192,7 @@ export async function POST(req: Request) {
       headers['x-api-key'] = apiKey;
       headers['anthropic-version'] = '2023-06-01';
       headers.Accept = 'text/event-stream';
-      rawModelId = rawModelId.replace(/^anthropic\//, '');
+      rawModelId = mapToAnthropicModel(rawModelId);
     } else if (activeProvider === 'ollama') {
       endpoint = `${(config?.base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
       rawModelId = rawModelId.replace(/^ollama\//, '');
