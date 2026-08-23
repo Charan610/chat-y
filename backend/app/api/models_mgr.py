@@ -23,14 +23,14 @@ PROVIDERS = [
         "name": "Groq",
         "description": "Ultra-fast LPU inference",
         "base_url": "https://api.groq.com/openai/v1",
-        "models": ["llama-3.3-70b-versatile", "llama-3.2-3b-preview", "mixtral-8x7b-32768", "gemma2-9b-it"],
+        "models": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"],
     },
     {
         "id": "nvidia_nim",
         "name": "NVIDIA NIM",
         "description": "High-performance NVIDIA inference",
         "base_url": "https://integrate.api.nvidia.com/v1",
-        "models": ["nvidia/nemotron-3-ultra-550b-a55b", "meta/llama-3.1-70b-instruct"],
+        "models": ["nvidia/llama-3.1-nemotron-70b-instruct", "meta/llama-3.1-70b-instruct"],
     },
     {
         "id": "openai",
@@ -51,7 +51,7 @@ PROVIDERS = [
         "name": "Google Gemini",
         "description": "Gemini 1.5 Pro and Flash",
         "base_url": "https://generativelanguage.googleapis.com",
-        "models": ["gemini/gemini-1.5-pro", "gemini/gemini-1.5-flash"],
+        "models": ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash"],
     },
     {
         "id": "openrouter",

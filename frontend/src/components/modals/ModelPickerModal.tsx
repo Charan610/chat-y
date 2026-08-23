@@ -41,13 +41,13 @@ export function ModelPickerModal({ onClose }: ModelPickerModalProps) {
   const defaultModels = [
     ...webllmModels,
     { name: 'Llama 3.3 70B Versatile', provider: 'groq', model_id: 'llama-3.3-70b-versatile', description: 'Ultra-fast general answers' },
-    { name: 'Llama 3.2 3B Preview', provider: 'groq', model_id: 'llama-3.2-3b-preview', description: 'Absolute fastest response speed' },
+    { name: 'Llama 3.1 8B Instant', provider: 'groq', model_id: 'llama-3.1-8b-instant', description: 'Absolute fastest response speed' },
     { name: 'Nemotron 3 Ultra 550B', provider: 'nvidia_nim', model_id: 'nvidia/nemotron-3-ultra-550b-a55b', description: 'NVIDIA high-performance reasoning' },
     { name: 'GPT-4o', provider: 'openai', model_id: 'gpt-4o', description: 'OpenAI flagship multimodal intelligence' },
     { name: 'GPT-4o Mini', provider: 'openai', model_id: 'gpt-4o-mini', description: 'Fast, lightweight reasoning' },
     { name: 'Claude 3.5 Sonnet', provider: 'anthropic', model_id: 'claude-3-5-sonnet-20241022', description: 'Excellent coding and reasoning' },
-    { name: 'Gemini 1.5 Pro', provider: 'google', model_id: 'gemini/gemini-1.5-pro', description: 'Massive context window analysis' },
-    { name: 'Gemini 1.5 Flash', provider: 'google', model_id: 'gemini/gemini-1.5-flash', description: 'Google speed-tier multimodal' },
+    { name: 'Gemini 1.5 Pro', provider: 'google', model_id: 'gemini-1.5-pro', description: 'Massive context window analysis' },
+    { name: 'Gemini 1.5 Flash', provider: 'google', model_id: 'gemini-1.5-flash', description: 'Google speed-tier multimodal' },
   ];
 
   // Map state models to picker format

@@ -97,20 +97,38 @@ export async function POST(req: Request) {
     if (activeProvider === 'groq') {
       endpoint = `${(config?.base_url || 'https://api.groq.com/openai/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
+      rawModelId = rawModelId.replace(/^groq\//, '');
+      if (rawModelId === 'llama-3.2-3b-preview' || rawModelId === 'llama-3.2-1b-preview' || rawModelId === 'llama3-70b-8192') {
+        rawModelId = 'llama-3.1-8b-instant';
+      }
     } else if (activeProvider === 'openai') {
       endpoint = `${(config?.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
+      rawModelId = rawModelId.replace(/^openai\//, '');
     } else if (activeProvider === 'google') {
       endpoint = `${(config?.base_url || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
+      rawModelId = rawModelId.replace(/^(google\/|gemini\/)+/, '');
+      if (!rawModelId.startsWith('gemini-')) {
+        rawModelId = `gemini-${rawModelId}`;
+      }
     } else if (activeProvider === 'nvidia_nim') {
       endpoint = `${(config?.base_url || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
+      rawModelId = rawModelId.replace(/^nvidia_nim\//, '');
+      if (!rawModelId.includes('/')) {
+        if (rawModelId.startsWith('llama') || rawModelId.startsWith('meta')) {
+          rawModelId = `meta/${rawModelId}`;
+        } else {
+          rawModelId = `nvidia/${rawModelId}`;
+        }
+      }
     } else if (activeProvider === 'openrouter') {
       endpoint = `${(config?.base_url || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
       headers['HTTP-Referer'] = 'https://chat-y.local';
       headers['X-Title'] = 'Chat-Y';
+      rawModelId = rawModelId.replace(/^openrouter\//, '');
       if (web_search && !rawModelId.endsWith(':online')) {
         rawModelId = `${rawModelId}:online`;
       }
@@ -121,8 +139,10 @@ export async function POST(req: Request) {
       headers['x-api-key'] = apiKey;
       headers['anthropic-version'] = '2023-06-01';
       headers.Accept = 'text/event-stream';
+      rawModelId = rawModelId.replace(/^anthropic\//, '');
     } else if (activeProvider === 'ollama') {
       endpoint = `${(config?.base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
+      rawModelId = rawModelId.replace(/^ollama\//, '');
     }
 
     // ── Web search augmentation ───────────────────────────────────────────

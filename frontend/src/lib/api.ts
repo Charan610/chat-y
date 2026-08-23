@@ -156,20 +156,38 @@ export async function streamDirectCloud(
   if (activeProvider === 'groq') {
     endpoint = 'https://api.groq.com/openai/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+    rawModelId = rawModelId.replace(/^groq\//, '');
+    if (rawModelId === 'llama-3.2-3b-preview' || rawModelId === 'llama-3.2-1b-preview' || rawModelId === 'llama3-70b-8192') {
+      rawModelId = 'llama-3.1-8b-instant';
+    }
   } else if (activeProvider === 'openai') {
     endpoint = 'https://api.openai.com/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+    rawModelId = rawModelId.replace(/^openai\//, '');
   } else if (activeProvider === 'google') {
     endpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+    rawModelId = rawModelId.replace(/^(google\/|gemini\/)+/, '');
+    if (!rawModelId.startsWith('gemini-')) {
+      rawModelId = `gemini-${rawModelId}`;
+    }
   } else if (activeProvider === 'nvidia_nim') {
     endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+    rawModelId = rawModelId.replace(/^nvidia_nim\//, '');
+    if (!rawModelId.includes('/')) {
+      if (rawModelId.startsWith('llama') || rawModelId.startsWith('meta')) {
+        rawModelId = `meta/${rawModelId}`;
+      } else {
+        rawModelId = `nvidia/${rawModelId}`;
+      }
+    }
   } else if (activeProvider === 'openrouter') {
     endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
     headers['HTTP-Referer'] = 'https://chat-y.local';
     headers['X-Title'] = 'Chat-Y';
+    rawModelId = rawModelId.replace(/^openrouter\//, '');
     if (req.web_search && !rawModelId.endsWith(':online')) {
       rawModelId = `${rawModelId}:online`;
     }
