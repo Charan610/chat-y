@@ -52,7 +52,7 @@ class AgentLoop:
 
     def __init__(
         self,
-        provider: Provider,
+        provider: Provider | Any,  # Provider or ProviderRouter
         tool_registry: ToolRegistry,
         event_bus: EventBus,
         context_manager: ContextManager,
@@ -62,7 +62,8 @@ class AgentLoop:
         auto_approve_shell: bool = False,
         confirmation_callback: Callable[[ToolCall, str], Awaitable[bool]] | None = None,
     ) -> None:
-        self.provider = provider
+        self.provider = provider  # ProviderRouter or Provider
+        self.router = provider
         self.tool_registry = tool_registry
         self.event_bus = event_bus
         self.context_manager = context_manager

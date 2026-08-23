@@ -76,8 +76,9 @@ def _setup_router(config: CodeYConfig, event_bus: EventBus) -> ProviderRouter:
         f"  [dim]Provider:[/] [{ORANGE}]{active.name.upper()}[/] "
         f"[dim]Model:[/] [{ORANGE}]{active.model_id}[/]"
     )
+    chain_str = " → ".join(p.model_alias for p in router.chain)
     console.print(
-        f"  [dim]Chain:[/]    [{DIM}]{' → '.join(p.model_alias for p in router.chain)}[/]"
+        f"  [dim]Chain:[/]    [dim]{chain_str}[/dim]"
     )
     return router
 
@@ -151,7 +152,7 @@ async def _run_repl(config: CodeYConfig, project_root: Path) -> None:
     context_manager.set_context_size_for_model(router.active_provider.model_id)
 
     agent = AgentLoop(
-        provider=router.active_provider,
+        provider=router,
         tool_registry=registry,
         event_bus=event_bus,
         context_manager=context_manager,
@@ -330,8 +331,9 @@ def _handle_slash_command(
                 available = ", ".join(p.model_alias for p in router.chain)
                 console.print(f"  [dim]Model '{arg}' not found. Available aliases: {available}[/]")
         elif router:
+            chain_str = " → ".join(p.model_alias for p in router.chain)
             console.print(f"  Current provider: [{ORANGE}]{router.active_provider.display_name()}[/]")
-            console.print(f"  Chain: [{' → '.join(p.model_alias for p in router.chain)}]")
+            console.print(f"  Chain: [dim]{chain_str}[/dim]")
             console.print(f"  Usage: [bold {ORANGE}]/model <alias>[/]")
         return True
 
@@ -401,7 +403,7 @@ def run(
         context_manager.set_context_size_for_model(router.active_provider.model_id)
 
         agent = AgentLoop(
-            provider=router.active_provider,
+            provider=router,
             tool_registry=registry,
             event_bus=event_bus,
             context_manager=context_manager,

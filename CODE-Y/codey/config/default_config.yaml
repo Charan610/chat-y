@@ -6,6 +6,8 @@ providers:
     api_key_env: NVIDIA_API_KEY
     base_url: https://integrate.api.nvidia.com/v1
     models:
+      nim_llama_3_3: meta/llama-3.3-70b-instruct
+      nim_deepseek_r1: deepseek-ai/deepseek-r1
       nim_deepseek_v4: deepseek-ai/deepseek-v4
 
   groq:

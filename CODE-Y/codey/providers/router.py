@@ -437,6 +437,8 @@ class ProviderRouter:
             return "request timed out"
         if "429" in error_str or "rate limit" in error_str:
             return "rate limited (429)"
+        if "404" in error_str or "not found" in error_str:
+            return "model/endpoint not found (404)"
         if "500" in error_str:
             return "server error (500)"
         if "502" in error_str:

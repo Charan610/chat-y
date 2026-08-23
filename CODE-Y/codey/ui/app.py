@@ -136,7 +136,7 @@ class CodeYApp(App):
 
         # Set up agent loop
         self.agent = AgentLoop(
-            provider=self.router.active_provider,
+            provider=self.router,
             tool_registry=registry,
             event_bus=self.event_bus,
             context_manager=context_manager,
