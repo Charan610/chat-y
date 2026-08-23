@@ -11,34 +11,48 @@ providers:
     models:
       nim_llama_3_3: meta/llama-3.3-70b-instruct
       nim_deepseek_r1: deepseek-ai/deepseek-r1
+      nim_deepseek_v3: deepseek-ai/deepseek-v3
       nim_deepseek_v4: deepseek-ai/deepseek-v4
+      nim_mistral_large: mistralai/mistral-large-2-instruct
+      nim_llama_3_1_405b: meta/llama-3.1-405b-instruct
+      nim_qwen_72b: qwen/qwen2.5-72b-instruct
 
   groq:
     api_key_env: GROQ_API_KEY
     base_url: https://api.groq.com/openai/v1
     models:
       groq_llama_3_3_70b: llama-3.3-70b-versatile
+      groq_deepseek_r1: deepseek-r1-distill-llama-70b
+      groq_llama_3_1_8b: llama-3.1-8b-instant
+      groq_mixtral_8x7b: mixtral-8x7b-32768
+      groq_gemma_2_9b: gemma2-9b-it
 
   gemini:
     api_key_env: GEMINI_API_KEY
     base_url: https://generativelanguage.googleapis.com/v1beta/openai/
     models:
       gemini_2_5_pro: gemini-2.5-pro
+      gemini_2_5_flash: gemini-2.5-flash
+      gemini_2_0_flash: gemini-2.0-flash
+      gemini_1_5_pro: gemini-1.5-pro
 
   local:
     base_url: http://localhost:11434/v1
     models:
       local_ollama: llama3.3
+      local_deepseek_r1: deepseek-r1
+      local_qwen_coder: qwen2.5-coder
+      local_codellama: codellama
 
 routing:
   default_chain:
-    - nim_deepseek_v4
+    - nim_llama_3_3
     - groq_llama_3_3_70b
     - gemini_2_5_pro
     - local_ollama
   large_context_chain:
     - gemini_2_5_pro
-    - nim_deepseek_v4
+    - nim_llama_3_3
   timeout_seconds: 25
   max_retries_per_provider: 1
 

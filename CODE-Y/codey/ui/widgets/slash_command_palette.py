@@ -131,18 +131,27 @@ class SlashCommandPalette(Widget):
         return True
 
     def _filter_models(self, subquery: str) -> bool:
-        """Suggest models for /model <alias> with live API key status."""
+        """Suggest only working models for currently configured API keys (or local)."""
         catalog = self.models_provider() if self.models_provider else self._get_default_model_catalog()
 
+        show_all = subquery.startswith("all") or subquery == "*"
+        if show_all:
+            subquery = subquery.lstrip("all").strip()
+
         suggestions: list[SuggestionItem] = []
+        any_key_configured = any(entry.get("has_key", False) for entry in catalog if entry.get("provider") != "local")
 
         for entry in catalog:
             provider_name = entry.get("provider", "").upper()
             has_key = entry.get("has_key", False)
             key_env = entry.get("key_env")
 
-            if key_env:
-                badge = f"[{SUCCESS}]✓ Key Set[/]" if has_key else f"[{ERROR}]✗ No Key ({key_env})[/]"
+            # If not in show_all mode and this provider is missing its key, hide its models
+            if not show_all and not has_key and entry.get("provider") != "local":
+                continue
+
+            if key_env and key_env != "(none)":
+                badge = f"[{SUCCESS}]✓ Key Set[/]" if has_key else f"[{ERROR}]✗ No Key[/]"
             else:
                 badge = f"[{SUCCESS}]✓ Local[/]"
 
@@ -160,7 +169,7 @@ class SlashCommandPalette(Widget):
                 suggestions.append(
                     SuggestionItem(
                         value=f"/model {alias}",
-                        display_title=f"{alias:<20}",
+                        display_title=f"{alias:<22}",
                         display_desc=desc,
                         status_badge=badge,
                         is_ready=has_key,
@@ -174,11 +183,20 @@ class SlashCommandPalette(Widget):
             return False
 
         if not suggestions:
-            self.hide()
-            return False
-
-        # Prioritize ready models with active keys at the top
-        suggestions.sort(key=lambda s: (not s.is_ready, s.display_title))
+            if not any_key_configured:
+                # Prompt user to set an API key
+                suggestions.append(
+                    SuggestionItem(
+                        value="/key ",
+                        display_title="No API keys set",
+                        display_desc="Type /key <provider> <api_key> (e.g. /key groq gsk_...)",
+                        status_badge=f"[{ERROR}]✗ Needs Key[/]",
+                        is_ready=False,
+                    )
+                )
+            else:
+                self.hide()
+                return False
 
         self._mode = "models"
         self._suggestions = suggestions
