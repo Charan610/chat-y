@@ -69,6 +69,16 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
   return apiClient.get<Message[]>(`/api/conversations/${conversationId}/messages`);
 }
 
+export async function saveMessageToBackend(conversationId: string, role: string, content: string, provider?: string): Promise<void> {
+  try {
+    await apiClient.post(`/api/conversations/${conversationId}/messages`, {
+      role,
+      content,
+      provider,
+    });
+  } catch {}
+}
+
 // ── Web Search ───────────────────────────────────────────────────────────────
 export async function fetchWebSearch(query: string) {
   return await webSearch(query);
@@ -323,16 +333,21 @@ export async function streamChat(
         const raw = line.slice(6).trim();
         if (raw === '[DONE]') continue;
         try {
-          const chunk: StreamChunk = JSON.parse(raw);
-          if (chunk.type === 'chunk' && chunk.content) {
-            onChunk(chunk.content);
+          const chunk: any = JSON.parse(raw);
+          const chunkText = chunk.type === 'chunk'
+            ? chunk.content
+            : (chunk.type === 'content' ? chunk.content : (chunk.delta?.content || chunk.text || ''));
+          if (chunkText) {
+            onChunk(chunkText);
           } else if (chunk.type === 'metadata') {
             if (chunk.conversation_id) {
               conversationId = chunk.conversation_id;
             }
             onMetadata(chunk);
+          } else if (chunk.type === 'conversation_id' && chunk.content) {
+            conversationId = chunk.content;
           } else if (chunk.type === 'error') {
-            onError(chunk.error || 'Unknown error');
+            onError(chunk.error || chunk.content || 'Unknown error');
             return;
           }
         } catch {

@@ -32,6 +32,7 @@ import {
   streamChat,
   syncUser,
   importConversations,
+  saveMessageToBackend,
 } from '@/lib/api';
 import type { WebLLMProgress, WebLLMStatus, LocalModelId } from '@/lib/webllm';
 
@@ -118,14 +119,13 @@ function loadConversationsFromStorage(userId?: string): Conversation[] {
       const userConvs = localStorage.getItem(`chaty_conversations_${userId}`);
       if (userConvs) {
         const parsed = JSON.parse(userConvs);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-      return [];
     }
     const globalConvs = localStorage.getItem('chaty_conversations');
     if (globalConvs) {
       const parsed = JSON.parse(globalConvs);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {}
   return [];
@@ -308,7 +308,7 @@ interface AppContextValue {
   user: UserSession | null;
   dispatch: React.Dispatch<Action>;
   setActiveConversation: (id: string | null) => Promise<void>;
-  sendMessage: (content: string, fileIds?: string[]) => Promise<void>;
+  sendMessage: (content: string, fileIds?: string[], convIdOverride?: string) => Promise<void>;
   stopStreaming: () => void;
   newConversation: (prompt?: string, fileIds?: string[]) => Promise<void>;
   deleteConv: (id: string) => Promise<void>;
@@ -508,8 +508,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const msgs = await fetchMessages(id);
       if (msgs && msgs.length > 0) {
-        dispatch({ type: 'SET_MESSAGES', payload: msgs });
-        saveMessagesToStorage(id, msgs);
+        if (cached.length < msgs.length) {
+          dispatch({ type: 'SET_MESSAGES', payload: msgs });
+          saveMessagesToStorage(id, msgs);
+        }
       }
     } catch {
       // Keep cached messages if server call fails
@@ -524,10 +526,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Send message — dual-path (local WebLLM or cloud API) ──
-  const sendMessage = useCallback(async (content: string, fileIds?: string[]) => {
+  const sendMessage = useCallback(async (content: string, fileIds?: string[], convIdOverride?: string) => {
     if (!content.trim() || state.isStreaming) return;
 
-    let targetConvId = state.activeConversationId;
+    let targetConvId = convIdOverride || state.activeConversationId;
     let currentConvs = [...state.conversations];
 
     // Auto-create conversation if none exists
@@ -553,6 +555,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveConversationsToStorage(currentConvs, user?.id);
     }
 
+    // Always load existing messages from storage to ensure nothing is lost
+    const existingMsgs = loadMessagesFromStorage(targetConvId);
+    const baseMessages = existingMsgs.length > 0 ? existingMsgs : state.messages;
+
     const tempUserMsg: Message = {
       id: `user-${Date.now()}`,
       conversation_id: targetConvId,
@@ -568,7 +574,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       metadata: fileIds?.length ? { files: fileIds.map(id => ({ id, filename: id, original_name: id, file_type: 'file', file_size: 0, mime_type: 'application/octet-stream', created_at: new Date().toISOString() })) } : undefined,
     };
 
-    const updatedWithUser = [...state.messages, tempUserMsg];
+    const updatedWithUser = [...baseMessages, tempUserMsg];
     dispatch({ type: 'ADD_MESSAGE', payload: tempUserMsg });
     saveMessagesToStorage(targetConvId, updatedWithUser);
 
@@ -653,7 +659,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Build messages array from conversation history
       const chatMessages: { role: 'user' | 'assistant' | 'system'; content: string }[] = [
         { role: 'system', content: 'You are Chat-Y, a helpful AI assistant running locally in the user\'s browser via WebLLM. Be accurate and helpful.' },
-        ...state.messages.slice(-10).map(m => ({
+        ...baseMessages.slice(-10).map(m => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         })),
@@ -751,6 +757,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_STREAMING', payload: false });
 
         const fullAssistantText = streamContentRef.current;
+        if (!fullAssistantText.trim()) {
+          dispatch({ type: 'CLEAR_STREAM' });
+          dispatch({ type: 'SET_STREAMING_ID', payload: null });
+          return;
+        }
+
         const assistantMsg: Message = {
           id: `assistant-${Date.now()}`,
           conversation_id: finalConvId,
@@ -781,6 +793,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         if (resolvedConvId && resolvedConvId !== finalConvId && resolvedConvId !== targetConvId) {
           saveMessagesToStorage(resolvedConvId, finalMessages);
+        }
+
+        // Fire-and-forget sync to backend
+        if (finalConvId) {
+          saveMessageToBackend(finalConvId, 'user', content).catch(() => {});
+          if (fullAssistantText) {
+            saveMessageToBackend(finalConvId, 'assistant', fullAssistantText, finalMetadata.provider || 'cloud').catch(() => {});
+          }
         }
 
         // Update conversations in state and localStorage
@@ -838,7 +858,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveMessagesToStorage(tempId, []);
 
     if (prompt) {
-      setTimeout(() => sendMessage(prompt, fileIds), 50);
+      setTimeout(() => sendMessage(prompt, fileIds, tempId), 50);
     }
   }, [state.activeModel, state.conversations, user?.id, sendMessage]);
 
