@@ -291,19 +291,52 @@ class SlashCommandPalette(Widget):
         except Exception:
             pass
 
+    PAGE_SIZE: int = 8
+
     def _render_items(self) -> None:
+        """Render suggestions within a sliding window so the selected item is always visible."""
         try:
             list_widget = self.query_one("#palette-list", Static)
+            total = len(self._suggestions)
+            if total == 0:
+                list_widget.update("")
+                return
+
+            # Update header with position counter
+            if self._mode == "models":
+                header_title = f"  SELECT MODEL ({self.selected_index + 1}/{total} · ↑/↓ to scroll · Tab/Enter to select)"
+            else:
+                header_title = f"  COMMANDS ({self.selected_index + 1}/{total} · ↑/↓ to navigate · Tab/Enter to select)"
+            self._render_header(header_title)
+
+            # Calculate scrolling window range
+            if total <= self.PAGE_SIZE:
+                start_idx = 0
+                end_idx = total
+            else:
+                half = self.PAGE_SIZE // 2
+                start_idx = max(0, min(self.selected_index - half, total - self.PAGE_SIZE))
+                end_idx = start_idx + self.PAGE_SIZE
+
             lines = []
 
-            for i, item in enumerate(self._suggestions):
-                is_selected = i == self.selected_index
+            # Indicator for items above
+            if start_idx > 0:
+                lines.append(f"  [{TEXT_MUTED}]▲ ... {start_idx} more models above (press ↑) ...[/]")
+
+            for i in range(start_idx, end_idx):
+                item = self._suggestions[i]
+                is_selected = (i == self.selected_index)
                 badge_str = f" {item.status_badge}" if item.status_badge else ""
 
                 if is_selected:
                     lines.append(f"[bold on #FF5F00 black]▶ {item.display_title} {item.display_desc}{badge_str} [/]")
                 else:
                     lines.append(f"  [{ORANGE}]{item.display_title}[/] [{TEXT_DIM}]{item.display_desc}[/]{badge_str}")
+
+            # Indicator for items below
+            if end_idx < total:
+                lines.append(f"  [{TEXT_MUTED}]▼ ... {total - end_idx} more models below (press ↓) ...[/]")
 
             list_widget.update("\n".join(lines))
         except Exception:
