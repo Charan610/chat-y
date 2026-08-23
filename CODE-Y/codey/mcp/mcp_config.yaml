@@ -1,0 +1,19 @@
+# CODE-Y MCP Server Configuration
+# Same shape as Claude Desktop's mcpServers format for portability.
+#
+# Copy to ~/.codey/mcp_config.yaml and configure your servers.
+#
+# Example:
+# mcpServers:
+#   filesystem:
+#     command: npx
+#     args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+#   github:
+#     command: npx
+#     args: ["-y", "@modelcontextprotocol/server-github"]
+#     env:
+#       GITHUB_TOKEN: "ghp_xxxxxxxxxxxx"
+#   remote-server:
+#     url: http://localhost:3001/sse
+
+mcpServers: {}

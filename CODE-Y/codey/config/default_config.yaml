@@ -1,0 +1,56 @@
+# CODE-Y Default Configuration
+# Copy to ~/.codey/config.yaml and customize
+
+providers:
+  nim:
+    api_key_env: NVIDIA_API_KEY
+    base_url: https://integrate.api.nvidia.com/v1
+    models:
+      nim_deepseek_v4: deepseek-ai/deepseek-v4
+
+  groq:
+    api_key_env: GROQ_API_KEY
+    base_url: https://api.groq.com/openai/v1
+    models:
+      groq_llama_3_3_70b: llama-3.3-70b-versatile
+
+  gemini:
+    api_key_env: GEMINI_API_KEY
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    models:
+      gemini_2_5_pro: gemini-2.5-pro
+
+  local:
+    base_url: http://localhost:11434/v1
+    models:
+      local_ollama: llama3.3
+
+routing:
+  default_chain:
+    - nim_deepseek_v4
+    - groq_llama_3_3_70b
+    - gemini_2_5_pro
+    - local_ollama
+  large_context_chain:
+    - gemini_2_5_pro
+    - nim_deepseek_v4
+  timeout_seconds: 25
+  max_retries_per_provider: 1
+
+permissions:
+  auto_approve_reads: true
+  auto_approve_writes: false
+  auto_approve_shell: false
+  shell_allowlist:
+    - git
+    - pytest
+    - npm
+    - pip
+    - ls
+    - cat
+    - find
+    - grep
+
+ui:
+  theme: codey_orange
+  verbose_default: false
