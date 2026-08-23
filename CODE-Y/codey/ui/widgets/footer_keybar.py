@@ -69,6 +69,7 @@ class FooterKeybar(Widget):
                 f"[{ORANGE}][Tab][/] [{TEXT_DIM}]Autocomplete[/]   "
                 f"[{ORANGE}][/][/] [{TEXT_DIM}]Commands[/]   "
                 f"[{ORANGE}][↑↓][/] [{TEXT_DIM}]History[/]   "
+                f"[{ORANGE}][Ctrl+Y][/] [{TEXT_DIM}]Copy[/]   "
                 f"[{ORANGE}][Ctrl+O][/] [{TEXT_DIM}]Expand[/]   "
                 f"[{ORANGE}][Esc][/] [{TEXT_DIM}]Cancel[/]"
             )

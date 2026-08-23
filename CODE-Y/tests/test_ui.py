@@ -96,7 +96,7 @@ async def test_full_boxed_textual_app(tmp_path: Path):
         await pilot.press("/")
         await pilot.pause()
         assert palette.is_open
-        assert len(palette._suggestions) == 9
+        assert len(palette._suggestions) == 10
 
         await pilot.press("m")
         await pilot.press("o")

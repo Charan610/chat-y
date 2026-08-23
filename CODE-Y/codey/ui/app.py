@@ -93,9 +93,12 @@ class CodeYApp(App):
 
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit"),
+        Binding("ctrl+y", "copy_response", "Copy"),
         Binding("ctrl+l", "clear", "Clear"),
         Binding("ctrl+v", "toggle_verbose", "Verbose"),
         Binding("ctrl+o", "toggle_tool", "Expand Output"),
+        Binding("pageup", "scroll_up", "Scroll Up", show=False),
+        Binding("pagedown", "scroll_down", "Scroll Down", show=False),
     ]
 
     def __init__(
@@ -441,10 +444,17 @@ class CodeYApp(App):
             self.agent._initialized = False
             self.agent.initialize()
             feed.clear()
-            feed.log_widget.write(f"\n  [{ORANGE}]✓ Conversation history cleared.[/]\n")
+            feed.write_line(f"\n  [{ORANGE}]✓ Conversation history cleared.[/]\n")
+
+        elif command_name in ("/copy", "/c"):
+            copied = feed.copy_last_response_to_clipboard()
+            if copied:
+                feed.write_line(f"\n  [{SUCCESS}]✓ Copied last response to clipboard![/]\n")
+            else:
+                feed.write_line(f"\n  [{TEXT_DIM}]No response available to copy yet.[/]\n")
 
         else:
-            feed.log_widget.write(f"\n  [{TEXT_DIM}]Unknown command: {command_name}. Type /help for commands.[/]\n")
+            feed.write_line(f"\n  [{TEXT_DIM}]Unknown command: {command_name}. Type /help for commands.[/]\n")
 
     def action_clear(self) -> None:
         self._handle_slash_command("/clear")
@@ -455,3 +465,17 @@ class CodeYApp(App):
     def action_toggle_tool(self) -> None:
         feed = self.query_one(ActivityFeed)
         feed.action_toggle_expansion()
+
+    def action_copy_response(self) -> None:
+        feed = self.query_one(ActivityFeed)
+        copied = feed.copy_last_response_to_clipboard()
+        if copied:
+            feed.write_line(f"\n  [{SUCCESS}]✓ Copied last response to clipboard![/]\n")
+
+    def action_scroll_up(self) -> None:
+        feed = self.query_one(ActivityFeed)
+        feed.action_scroll_page_up()
+
+    def action_scroll_down(self) -> None:
+        feed = self.query_one(ActivityFeed)
+        feed.action_scroll_page_down()

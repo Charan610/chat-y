@@ -20,6 +20,70 @@ from codey.agent.slash_commands import SlashCommandRegistry
 from codey.ui.widgets.slash_command_palette import SlashCommandPalette
 
 
+class ChatInput(Input):
+    """Custom Input widget that routes navigation keys to palette when open."""
+
+    def __init__(self, parent_bar: InputBar, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self.parent_bar = parent_bar
+
+    def on_key(self, event: Key) -> None:
+        palette = self.parent_bar.palette
+
+        # 1. Autocomplete navigation when palette is visible
+        if palette.is_open:
+            if event.key == "up":
+                event.prevent_default()
+                event.stop()
+                palette.move_up()
+                return
+            elif event.key == "down":
+                event.prevent_default()
+                event.stop()
+                palette.move_down()
+                return
+            elif event.key == "tab":
+                event.prevent_default()
+                event.stop()
+                self.parent_bar._accept_suggestion()
+                return
+            elif event.key == "escape":
+                event.prevent_default()
+                event.stop()
+                palette.hide()
+                return
+            elif event.key == "enter":
+                sel = palette.get_selected()
+                current = self.value.strip()
+                if sel and current != sel.value.strip():
+                    event.prevent_default()
+                    event.stop()
+                    self.parent_bar._accept_suggestion()
+                    return
+
+        # 2. History navigation when palette is closed
+        if not palette.is_open:
+            if event.key == "up" and self.parent_bar._history:
+                if self.parent_bar._history_index < len(self.parent_bar._history) - 1:
+                    self.parent_bar._history_index += 1
+                    self.value = self.parent_bar._history[self.parent_bar._history_index]
+                    self.cursor_position = len(self.value)
+                event.prevent_default()
+                event.stop()
+                return
+            elif event.key == "down":
+                if self.parent_bar._history_index > 0:
+                    self.parent_bar._history_index -= 1
+                    self.value = self.parent_bar._history[self.parent_bar._history_index]
+                    self.cursor_position = len(self.value)
+                elif self.parent_bar._history_index == 0:
+                    self.parent_bar._history_index = -1
+                    self.value = ""
+                event.prevent_default()
+                event.stop()
+                return
+
+
 class InputBar(Widget):
     """Bottom input bar with integrated slash-command and model autocomplete palette."""
 
@@ -71,7 +135,8 @@ class InputBar(Widget):
                 models_provider=self.models_provider,
                 id="slash-palette",
             )
-            yield Input(
+            yield ChatInput(
+                parent_bar=self,
                 placeholder="Type your request... (/ for commands)",
                 id="user-input",
             )
@@ -109,58 +174,6 @@ class InputBar(Widget):
             self.palette.filter_commands(val)
         else:
             self.palette.hide()
-
-    def on_key(self, event: Key) -> None:
-        """Handle keyboard navigation for autocomplete and history."""
-        # 1. If slash command palette is open, handle navigation
-        if self.palette.is_open:
-            if event.key == "up":
-                event.prevent_default()
-                event.stop()
-                self.palette.move_up()
-                return
-            elif event.key == "down":
-                event.prevent_default()
-                event.stop()
-                self.palette.move_down()
-                return
-            elif event.key == "tab":
-                event.prevent_default()
-                event.stop()
-                self._accept_suggestion()
-                return
-            elif event.key == "escape":
-                event.prevent_default()
-                event.stop()
-                self.palette.hide()
-                return
-            elif event.key == "enter":
-                # If suggestion is not fully typed, complete it on first enter
-                sel = self.palette.get_selected()
-                current = self.input_widget.value.strip()
-                if sel and current != sel.value.strip():
-                    event.prevent_default()
-                    event.stop()
-                    self._accept_suggestion()
-                    return
-
-        # 2. Input history navigation when palette is closed
-        if not self.palette.is_open:
-            if event.key == "up" and self._history:
-                if self._history_index < len(self._history) - 1:
-                    self._history_index += 1
-                    self.input_widget.value = self._history[self._history_index]
-                    self.input_widget.cursor_position = len(self.input_widget.value)
-                event.prevent_default()
-            elif event.key == "down":
-                if self._history_index > 0:
-                    self._history_index -= 1
-                    self.input_widget.value = self._history[self._history_index]
-                    self.input_widget.cursor_position = len(self.input_widget.value)
-                elif self._history_index == 0:
-                    self._history_index = -1
-                    self.input_widget.value = ""
-                event.prevent_default()
 
     def _accept_suggestion(self) -> None:
         """Accept the currently highlighted suggestion."""

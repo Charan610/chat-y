@@ -10,6 +10,7 @@ Supported Action Labels:
 from __future__ import annotations
 
 import re
+import subprocess
 from dataclasses import dataclass
 from typing import Any
 
@@ -34,7 +35,7 @@ class ActivityItem:
 
 
 class ActivityFeed(Widget):
-    """Activity feed showing structured action rows with live status glyphs."""
+    """Activity feed showing structured action rows with live status glyphs and auto-scroll."""
 
     DEFAULT_CSS = """
     ActivityFeed {
@@ -55,6 +56,8 @@ class ActivityFeed(Widget):
 
     BINDINGS = [
         Binding("ctrl+o", "toggle_expansion", "Expand/Collapse Output", show=True),
+        Binding("pageup", "scroll_page_up", "Scroll Up", show=False),
+        Binding("pagedown", "scroll_page_down", "Scroll Down", show=False),
     ]
 
     verbose: reactive[bool] = reactive(False)
@@ -63,12 +66,14 @@ class ActivityFeed(Widget):
         super().__init__(**kwargs)
         self._items: list[ActivityItem] = []
         self._header_rendered = False
+        self.last_response: str = ""
 
     def compose(self) -> ComposeResult:
         yield RichLog(
             highlight=False,
             markup=True,
             wrap=True,
+            auto_scroll=True,
             id="activity-log",
         )
 
@@ -81,15 +86,25 @@ class ActivityFeed(Widget):
 
     def _ensure_header(self) -> None:
         if not self._header_rendered:
-            self.log_widget.write(f"[{TEXT_MUTED}]─── Activity ──────────────────────────────────────────────────[/]\n")
+            self.log_widget.write(
+                f"[{TEXT_MUTED}]─── Activity ──────────────────────────────────────────────────[/]\n",
+                scroll_end=True,
+            )
             self._header_rendered = True
+
+    def write_line(self, text: str) -> None:
+        """Write formatted line and auto-scroll to bottom."""
+        self.log_widget.write(text, scroll_end=True)
 
     # ── State / Thinking Tokens ──
 
     def add_thinking_start(self, initial_summary: str = "Analyzing task and planning next steps...") -> None:
         """Record thinking activity in progress (◉)."""
         self._ensure_header()
-        self.log_widget.write(f"  [{ORANGE}]◉ Thinking       [/] [{TEXT_DIM}]{initial_summary}[/]")
+        self.log_widget.write(
+            f"  [{ORANGE}]◉ Thinking       [/] [{TEXT_DIM}]{initial_summary}[/]",
+            scroll_end=True,
+        )
 
     def add_thinking_token(self, token: str) -> None:
         """Stream assistant token incrementally (flicker-free)."""
@@ -106,7 +121,10 @@ class ActivityFeed(Widget):
         item = ActivityItem(action=action_label, summary=intent)
         self._items.append(item)
 
-        self.log_widget.write(f"  [{ORANGE}]◉ {action_label:<14}[/] [{TEXT}]{intent}[/]")
+        self.log_widget.write(
+            f"  [{ORANGE}]◉ {action_label:<14}[/] [{TEXT}]{intent}[/]",
+            scroll_end=True,
+        )
 
     def add_tool_result(self, tool_name: str, result_preview: str, **_: object) -> None:
         """Record completed tool result with ✓ (or ✗) glyph and collapsed summary."""
@@ -129,7 +147,10 @@ class ActivityFeed(Widget):
         glyph = f"[{ERROR}]✗[/]" if is_error else f"[{SUCCESS}]✓[/]"
         action_colored = f"[{ERROR}]{action_label:<14}[/]" if is_error else f"[{TEXT_DIM}]{action_label:<14}[/]"
 
-        self.log_widget.write(f"  {glyph} {action_colored} [{TEXT_DIM}]{summary}[/]")
+        self.log_widget.write(
+            f"  {glyph} {action_colored} [{TEXT_DIM}]{summary}[/]",
+            scroll_end=True,
+        )
 
     # ── Failover Row (Special CODE-Y Activity Row) ──
 
@@ -155,19 +176,46 @@ class ActivityFeed(Widget):
         self._items.append(item)
 
         self.log_widget.write(
-            f"  [{ERROR}]✗[/] [{ORANGE}]Failover      [/] [bold #FF7A1A]{failover_desc}[/]"
+            f"  [{ERROR}]✗[/] [{ORANGE}]Failover      [/] [bold #FF7A1A]{failover_desc}[/]",
+            scroll_end=True,
         )
 
     # ── Response / Synthesis ──
 
     def add_response(self, content: str) -> None:
-        """Render final response synthesis."""
+        """Render final response synthesis and auto-scroll."""
         if content and not content.startswith("[Max iterations"):
-            self.log_widget.write(f"\n{content}\n")
+            self.last_response = content.strip()
+            self.log_widget.write(f"\n{content}\n", scroll_end=True)
 
     def add_error(self, error: str, **_: object) -> None:
         """Render error row."""
-        self.log_widget.write(f"  [{ERROR}]✗ Error         {error}[/]")
+        self.log_widget.write(f"  [{ERROR}]✗ Error         {error}[/]", scroll_end=True)
+
+    # ── Clipboard Copy ──
+
+    def copy_last_response_to_clipboard(self) -> bool:
+        """Copy the last assistant response to system clipboard (macOS/Linux/Windows)."""
+        text_to_copy = self.last_response
+        if not text_to_copy and self._items:
+            text_to_copy = self._items[-1].raw_output or self._items[-1].summary
+
+        if not text_to_copy:
+            return False
+
+        try:
+            # 1. macOS pbcopy
+            p = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
+            p.communicate(text_to_copy.encode("utf-8"))
+            return p.returncode == 0
+        except Exception:
+            try:
+                # 2. pyperclip fallback if available
+                import pyperclip
+                pyperclip.copy(text_to_copy)
+                return True
+            except Exception:
+                return False
 
     # ── Interactive Expansion (Ctrl+O) ──
 
@@ -186,14 +234,22 @@ class ActivityFeed(Widget):
             self.log_widget.write(
                 f"\n  [{ORANGE}]─── Expanded: {last.action} ({last.summary}) ───[/]\n"
                 f"[{TEXT_DIM}]{preview}[/]\n"
-                f"  [{ORANGE}]─── (Ctrl+O to collapse) ───[/]\n"
+                f"  [{ORANGE}]─── (Ctrl+O to collapse) ───[/]\n",
+                scroll_end=True,
             )
         else:
-            self.log_widget.write(f"  [{TEXT_MUTED}]✓ {last.action} (collapsed)[/]")
+            self.log_widget.write(f"  [{TEXT_MUTED}]✓ {last.action} (collapsed)[/]", scroll_end=True)
+
+    def action_scroll_page_up(self) -> None:
+        self.log_widget.scroll_page_up()
+
+    def action_scroll_page_down(self) -> None:
+        self.log_widget.scroll_page_down()
 
     def clear(self) -> None:
         """Clear feed and reset header."""
         self._items.clear()
+        self.last_response = ""
         self.log_widget.clear()
         self._header_rendered = False
         self._ensure_header()

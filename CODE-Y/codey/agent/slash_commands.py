@@ -137,6 +137,13 @@ DEFAULT_SLASH_COMMANDS: list[SlashCommand] = [
         aliases=["/api", "/auth"],
     ),
     SlashCommand(
+        name="/copy",
+        usage="/copy",
+        description="Copy the last assistant response to clipboard (Ctrl+Y)",
+        category="Session",
+        aliases=["/c"],
+    ),
+    SlashCommand(
         name="/help",
         usage="/help",
         description="Show all available slash commands",
