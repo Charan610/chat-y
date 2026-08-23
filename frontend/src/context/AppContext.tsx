@@ -131,6 +131,26 @@ function loadConversationsFromStorage(userId?: string): Conversation[] {
   return [];
 }
 
+function saveActiveConversationId(id: string | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (id) {
+      localStorage.setItem('chaty_active_conv_id', id);
+    } else {
+      localStorage.removeItem('chaty_active_conv_id');
+    }
+  } catch {}
+}
+
+function loadActiveConversationId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem('chaty_active_conv_id');
+  } catch {
+    return null;
+  }
+}
+
 function saveMessagesToStorage(convId: string, msgs: Message[]) {
   if (typeof window === 'undefined' || !convId) return;
   try {
@@ -349,6 +369,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const cached = loadConversationsFromStorage(activeUserId);
       if (cached.length > 0) {
         dispatch({ type: 'SET_CONVERSATIONS', payload: cached });
+        const lastActiveId = loadActiveConversationId();
+        if (lastActiveId && cached.some(c => c.id === lastActiveId)) {
+          dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: lastActiveId });
+          const cachedMsgs = loadMessagesFromStorage(lastActiveId);
+          if (cachedMsgs.length > 0) {
+            dispatch({ type: 'SET_MESSAGES', payload: cachedMsgs });
+          }
+        }
       }
     } catch {}
   }, []);
@@ -458,6 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setActiveConversation = useCallback(async (id: string | null) => {
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: id });
+    saveActiveConversationId(id);
     if (!id) {
       dispatch({ type: 'SET_MESSAGES', payload: [] });
       return;
@@ -517,9 +546,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         message_count: 0,
         total_tokens: 0,
       };
-      currentConvs = [newConv, ...currentConvs];
+      currentConvs = [newConv, ...currentConvs.filter(c => c.id !== targetConvId)];
       dispatch({ type: 'ADD_CONVERSATION', payload: newConv });
       dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: targetConvId });
+      saveActiveConversationId(targetConvId);
       saveConversationsToStorage(currentConvs, user?.id);
     }
 
@@ -553,6 +583,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         message_count: updatedWithUser.length,
       };
       const updatedList = currentConvs.map(c => c.id === targetConvId ? updatedConv : c);
+      currentConvs = updatedList;
       dispatch({ type: 'UPDATE_CONVERSATION', payload: updatedConv });
       saveConversationsToStorage(updatedList, user?.id);
     }
@@ -663,11 +694,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Persist messages & updated conversation
           if (targetConvId) {
             saveMessagesToStorage(targetConvId, finalMessages);
-            const conv = state.conversations.find(c => c.id === targetConvId);
+            const conv = currentConvs.find(c => c.id === targetConvId);
             if (conv) {
               const updatedConv = { ...conv, message_count: finalMessages.length, updated_at: new Date().toISOString() };
               dispatch({ type: 'UPDATE_CONVERSATION', payload: updatedConv });
-              saveConversationsToStorage(state.conversations.map(c => c.id === targetConvId ? updatedConv : c), user?.id);
+              saveConversationsToStorage(currentConvs.map(c => c.id === targetConvId ? updatedConv : c), user?.id);
             }
           }
         },
@@ -684,15 +715,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // ─── CLOUD MODE (direct client & backend streaming) ───
     let finalMetadata: Partial<Message> = {};
-    let resolvedConvId = targetConvId || '';
-
-    const sendConvId = targetConvId?.startsWith('conv-') || targetConvId?.startsWith('local-')
-      ? undefined
-      : targetConvId || undefined;
+    let resolvedConvId = targetConvId;
 
     await streamChat(
       {
-        conversation_id: sendConvId,
+        conversation_id: targetConvId,
         message: content,
         model: state.activeModel,
         web_search: state.webSearchEnabled,
@@ -720,13 +747,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       },
       async (convId) => {
-        resolvedConvId = convId || resolvedConvId || targetConvId || '';
+        const finalConvId = targetConvId || convId || resolvedConvId || '';
         dispatch({ type: 'SET_STREAMING', payload: false });
 
         const fullAssistantText = streamContentRef.current;
         const assistantMsg: Message = {
           id: `assistant-${Date.now()}`,
-          conversation_id: resolvedConvId,
+          conversation_id: finalConvId,
           role: 'assistant',
           content: fullAssistantText,
           model: finalMetadata.model || state.activeModel,
@@ -745,19 +772,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const finalMessages = [...updatedWithUser, assistantMsg];
         dispatch({ type: 'ADD_MESSAGE', payload: assistantMsg });
 
-        // Save messages in localStorage
-        saveMessagesToStorage(resolvedConvId, finalMessages);
+        // Save messages in localStorage for both finalConvId and targetConvId / resolvedConvId
+        if (finalConvId) {
+          saveMessagesToStorage(finalConvId, finalMessages);
+        }
+        if (targetConvId && targetConvId !== finalConvId) {
+          saveMessagesToStorage(targetConvId, finalMessages);
+        }
+        if (resolvedConvId && resolvedConvId !== finalConvId && resolvedConvId !== targetConvId) {
+          saveMessagesToStorage(resolvedConvId, finalMessages);
+        }
 
         // Update conversations in state and localStorage
-        const existingConv = state.conversations.find(c => c.id === resolvedConvId);
+        const existingConv = currentConvs.find(c => c.id === targetConvId || c.id === finalConvId || c.id === resolvedConvId);
         if (existingConv) {
           const updatedConv = {
             ...existingConv,
+            id: finalConvId || existingConv.id,
             message_count: finalMessages.length,
             updated_at: new Date().toISOString(),
           };
           dispatch({ type: 'UPDATE_CONVERSATION', payload: updatedConv });
-          saveConversationsToStorage(state.conversations.map(c => c.id === resolvedConvId ? updatedConv : c), user?.id);
+          const updatedList = currentConvs.map(c => (c.id === targetConvId || c.id === finalConvId || c.id === resolvedConvId) ? updatedConv : c);
+          saveConversationsToStorage(updatedList, user?.id);
         }
 
         dispatch({ type: 'CLEAR_STREAM' });
@@ -792,6 +829,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     dispatch({ type: 'ADD_CONVERSATION', payload: fallbackConv });
     dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: tempId });
+    saveActiveConversationId(tempId);
     dispatch({ type: 'SET_MESSAGES', payload: [] });
 
     // Save immediately to localStorage
@@ -811,6 +849,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       const filtered = state.conversations.filter(c => c.id !== id);
       saveConversationsToStorage(filtered, user?.id);
+      if (state.activeConversationId === id) {
+        saveActiveConversationId(null);
+      }
       try {
         localStorage.removeItem(`chaty_messages_${id}`);
       } catch {}
@@ -819,7 +860,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {
       showToast('Failed to delete', 'error');
     }
-  }, [state.conversations, user?.id, showToast]);
+  }, [state.conversations, state.activeConversationId, user?.id, showToast]);
 
   const renameConv = useCallback(async (id: string, title: string) => {
     try {

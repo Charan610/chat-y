@@ -33,7 +33,7 @@ const PROVIDERS = [
 ];
 
 export function WelcomeScreen() {
-  const { state, user, newConversation, dispatch } = useApp();
+  const { state, user, newConversation, setActiveConversation, dispatch } = useApp();
   const { conversations } = state;
 
   const recentConvs = conversations.slice(0, 3);
@@ -205,7 +205,7 @@ export function WelcomeScreen() {
               {recentConvs.map(conv => (
                 <button
                   key={conv.id}
-                  onClick={() => dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conv.id })}
+                  onClick={() => setActiveConversation(conv.id)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
