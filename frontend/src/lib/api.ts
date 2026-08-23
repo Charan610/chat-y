@@ -224,7 +224,20 @@ export async function streamDirectCloud(
 
     const systemMessage = {
       role: 'system',
-      content: `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant. Always provide accurate, current, and real-time answers.`
+      content: `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant. Always provide accurate, current, and real-time answers.
+
+When generating a complete file the user can save or preview (HTML, CSS, JS, Markdown, JSON, Python, etc.), wrap it EXACTLY like this:
+
+<chaty-file name="index.html" type="html">
+...full file content here...
+</chaty-file>
+
+Rules:
+- Always include a real, sensible filename with correct extension in the name attribute
+- type must be one of: html, css, js, json, md, py, txt
+- Do not add explanation inside the chaty-file block — only the raw file content
+- You may still explain what you built in normal text outside the block
+- Only use this format for complete, standalone files — not small inline code snippets the user didn't ask to save`
     };
 
     const historyMessages: { role: string; content: string }[] = [];

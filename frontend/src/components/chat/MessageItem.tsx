@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -17,8 +17,10 @@ import {
   Zap,
   Brain,
 } from 'lucide-react';
-import type { Message } from '@/types';
+import { Message } from '@/types';
 import { useApp } from '@/context/AppContext';
+import { parseFileSegments } from '@/lib/fileParser';
+import { FileArtifactPanel } from './FileArtifactPanel';
 
 function getProvider(model?: string) {
   return model?.split('/')[0]?.toLowerCase() || '';
@@ -211,6 +213,11 @@ export function MessageItem({
   const citations = message.metadata?.citations;
   const attachedFiles = message.metadata?.files;
 
+  const segments = useMemo(() => {
+    if (isUser) return [];
+    return parseFileSegments(message.content, isStreaming);
+  }, [isUser, message.content, isStreaming]);
+
   return (
     <div
       className="chat-column"
@@ -343,38 +350,51 @@ export function MessageItem({
                 <ReasoningSection content={message.reasoning_content} />
               )}
 
-              {/* Main content */}
-              <div className="prose-dark" style={{ fontSize: 14 }}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeHighlight]}
-                  components={{
-                    code({ node, className, children, ...props }) {
-                      const match = /language-(\w+)/.exec(className || '');
-                      const isBlock = match !== null;
-                      return isBlock ? (
-                        <CodeBlock className={className}>{children}</CodeBlock>
-                      ) : (
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                    pre({ children }) {
-                      return <>{children}</>;
-                    },
-                  }}
-                >
-                  {message.content}
-                </ReactMarkdown>
-                {isStreaming && (
-                  <span
-                    className="streaming-cursor"
-                    style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', marginLeft: 1 }}
-                  >
-                    █
-                  </span>
-                )}
+              {/* Main content segments */}
+              <div>
+                {segments.map((seg, idx) => {
+                  const isLastSegment = idx === segments.length - 1;
+                  if (seg.type === 'file') {
+                    return <FileArtifactPanel key={seg.file.id} file={seg.file} />;
+                  }
+
+                  if (!seg.content.trim() && !isStreaming) return null;
+
+                  return (
+                    <div key={idx} className="prose-dark" style={{ fontSize: 14 }}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeHighlight]}
+                        components={{
+                          code({ node, className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const isBlock = match !== null;
+                            return isBlock ? (
+                              <CodeBlock className={className}>{children}</CodeBlock>
+                            ) : (
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            );
+                          },
+                          pre({ children }) {
+                            return <>{children}</>;
+                          },
+                        }}
+                      >
+                        {seg.content}
+                      </ReactMarkdown>
+                      {isStreaming && isLastSegment && (
+                        <span
+                          className="streaming-cursor"
+                          style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', marginLeft: 1 }}
+                        >
+                          █
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Citations */}
