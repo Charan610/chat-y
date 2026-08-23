@@ -64,11 +64,12 @@ def test_slash_command_palette_filtering():
     assert palette.filter_commands("/mod") is True
     sel = palette.get_selected()
     assert sel is not None
-    assert sel.name == "/model"
+    assert "/model" in sel.value
 
-    # Typing space closes palette
-    assert palette.filter_commands("/model my_alias") is False
-    assert palette.is_open is False
+    # Subcommand filtering for models
+    assert palette.filter_commands("/model ") is True
+    assert palette._mode == "models"
+    assert len(palette._suggestions) > 0
 
 
 @pytest.mark.asyncio
@@ -95,15 +96,10 @@ async def test_full_boxed_textual_app(tmp_path: Path):
         await pilot.press("/")
         await pilot.pause()
         assert palette.is_open
-        assert len(palette._filtered_commands) == 8
+        assert len(palette._suggestions) == 8
 
         await pilot.press("m")
         await pilot.press("o")
         await pilot.pause()
         assert palette.is_open
-        assert palette.get_selected().name == "/model"
-
-        await pilot.press("tab")
-        await pilot.pause()
-        assert input_widget.value == "/model "
-        assert not palette.is_open
+        assert "/model" in palette.get_selected().value

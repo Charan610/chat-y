@@ -183,7 +183,10 @@ class CodeYApp(App):
             yield HeaderBar()
             yield Static("─" * 400, classes="divider", id="top-divider")
             yield GreetingArea(user_name=self.config.user.name)
-            yield InputBar(slash_registry=self.slash_registry)
+            yield InputBar(
+                slash_registry=self.slash_registry,
+                models_provider=lambda: self.router.get_model_catalog() if self.router else [],
+            )
             yield ActivityFeed()
             yield DiffView()
             yield Static("─" * 400, classes="divider", id="bottom-divider")

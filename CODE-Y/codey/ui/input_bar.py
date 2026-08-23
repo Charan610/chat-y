@@ -1,12 +1,13 @@
-"""Input bar widget with integrated slash-command autocomplete popup.
+"""Input bar widget with integrated slash-command and model autocomplete popup.
 
-Handles live reactive filtering as user types '/', keyboard navigation
-(Up/Down/Tab/Enter/Escape), history cycling, and state-aware placeholder.
+Handles live reactive filtering as user types '/', sub-command model suggestions,
+keyboard navigation (Up/Down/Tab/Enter/Escape), history cycling, and state-aware placeholder.
 """
 
 from __future__ import annotations
 
 from collections import deque
+from typing import Any, Callable
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
@@ -20,7 +21,7 @@ from codey.ui.widgets.slash_command_palette import SlashCommandPalette
 
 
 class InputBar(Widget):
-    """Bottom input bar with integrated slash-command autocomplete palette."""
+    """Bottom input bar with integrated slash-command and model autocomplete palette."""
 
     DEFAULT_CSS = """
     InputBar {
@@ -54,16 +55,22 @@ class InputBar(Widget):
     def __init__(
         self,
         slash_registry: SlashCommandRegistry | None = None,
+        models_provider: Callable[[], list[dict[str, Any]]] | None = None,
         **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
         self.slash_registry = slash_registry
+        self.models_provider = models_provider
         self._history: deque[str] = deque(maxlen=100)
         self._history_index: int = -1
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield SlashCommandPalette(registry=self.slash_registry, id="slash-palette")
+            yield SlashCommandPalette(
+                registry=self.slash_registry,
+                models_provider=self.models_provider,
+                id="slash-palette",
+            )
             yield Input(
                 placeholder="Type your request... (/ for commands)",
                 id="user-input",
@@ -96,7 +103,7 @@ class InputBar(Widget):
             pass
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        """Filter slash command suggestions live as user types."""
+        """Filter slash command and model suggestions live as user types."""
         val = event.value
         if val.startswith("/"):
             self.palette.filter_commands(val)
@@ -128,10 +135,10 @@ class InputBar(Widget):
                 self.palette.hide()
                 return
             elif event.key == "enter":
-                # If command is incomplete, complete it first
+                # If suggestion is not fully typed, complete it on first enter
                 sel = self.palette.get_selected()
                 current = self.input_widget.value.strip()
-                if sel and current != sel.name and not current.startswith(f"{sel.name} "):
+                if sel and current != sel.value.strip():
                     event.prevent_default()
                     event.stop()
                     self._accept_suggestion()
@@ -161,15 +168,15 @@ class InputBar(Widget):
         if not sel:
             return
 
-        # Insert command name with trailing space if parameters needed
-        if "<" in sel.usage:
-            new_val = f"{sel.name} "
-        else:
-            new_val = sel.name
-
+        new_val = sel.value
         self.input_widget.value = new_val
         self.input_widget.cursor_position = len(new_val)
-        self.palette.hide()
+
+        # If it was a top-level command that takes parameters (like '/model '), filter sub-items immediately
+        if new_val.endswith(" "):
+            self.palette.filter_commands(new_val)
+        else:
+            self.palette.hide()
 
     def add_to_history(self, text: str) -> None:
         """Record input in history."""
