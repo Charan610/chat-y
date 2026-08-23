@@ -74,9 +74,19 @@ class UIConfig(BaseModel):
     )
 
 
+class UserConfig(BaseModel):
+    """User profile and personalization."""
+
+    name: str | None = Field(
+        default=None,
+        description="User display name for personalized greetings in the UI.",
+    )
+
+
 class CodeYConfig(BaseModel):
     """Root configuration model for CODE-Y."""
 
+    user: UserConfig = Field(default_factory=UserConfig)
     providers: dict[str, ProviderConfig] = Field(default_factory=dict)
     routing: RoutingConfig = Field(default_factory=RoutingConfig)
     permissions: PermissionsConfig = Field(default_factory=PermissionsConfig)

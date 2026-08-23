@@ -1,11 +1,28 @@
-"""CODE-Y Textual TUI Application Root.
+"""CODE-Y Boxed Terminal UI Application Root.
 
-Features:
-  - Claude Code-style live slash-command autocomplete popup
-  - Collapsible tool executions with intent preservation (Ctrl+O to expand)
-  - Quiet, persistent status line docked above the input bar
-  - Smooth append-only flicker-free streaming
-  - Phosphor Amber / Orange & Black visual theme
+Matches the reference boxed layout:
+╭──────────────────────────────────────────────────────────────╮
+│  ✦ CODE-Y                              ● ONLINE   12:43 │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Good afternoon, Charan.                                    │
+│                                                              │
+│  What would you like me to do?                              │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ > Build a React dashboard for my project              │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ─── Activity ──────────────────────────────────────────────  │
+│                                                              │
+│  ◉ Thinking        Analyzing project structure...             │
+│  ✓ Search          Found 12 relevant files                    │
+│  ✓ Edit            Updated src/components/Dashboard.tsx       │
+│  ◌ Execute         Running development server...              │
+│                                                              │
+├──────────────────────────────────────────────────────────────┤
+│  [Tab] Agents   [/] Commands   [↑↓] History   [Esc] Cancel  │
+╰──────────────────────────────────────────────────────────────╯
 """
 
 from __future__ import annotations
@@ -17,7 +34,7 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Vertical
 from textual.widgets import Input, Static
 
 from codey.agent.context_manager import ContextManager
@@ -34,57 +51,43 @@ from codey.tools.git_tools import create_git_tools
 from codey.tools.registry import ToolRegistry
 from codey.tools.shell_tool import create_shell_tool
 from codey.ui.input_bar import InputBar
-from codey.ui.theme import CODEY_ORANGE_THEME, ORANGE, TEXT_DIM, TEXT_MUTED
+from codey.ui.theme import CODEY_ORANGE_THEME, ORANGE, SUCCESS, TEXT_DIM, TEXT_MUTED
+from codey.ui.widgets.activity_feed import ActivityFeed
 from codey.ui.widgets.diff_view import DiffView
-from codey.ui.widgets.provider_banner import ProviderBanner
-from codey.ui.widgets.status_line import StatusLine
-from codey.ui.widgets.thought_stream import ThoughtStream
+from codey.ui.widgets.footer_keybar import FooterKeybar
+from codey.ui.widgets.greeting_area import GreetingArea
+from codey.ui.widgets.header_bar import HeaderBar
 
 logger = logging.getLogger(__name__)
 
 
 class CodeYApp(App):
-    """CODE-Y Terminal UI Application.
-
-    Layout:
-    ┌───────────────────────────────────────────────────────────┐
-    │  [title_bar] ⚡ CODE-Y — project_name                      │
-    ├───────────────────────────────────────────────────────────┤
-    │  [thought_stream]                                         │
-    │  • User input                                             │
-    │  • ⚡ → Intent before execution                           │
-    │  • ✓ Collapsed tool results (Ctrl+O to expand)            │
-    │  • Assistant streaming response                           │
-    │  [diff_view] (on write confirmations)                     │
-    ├───────────────────────────────────────────────────────────┤
-    │  [status_line] ⚡ nim/deepseek-v4 · ctx 34% · 10 tools    │
-    │  [slash_command_palette] (live dropdown on typing '/')    │
-    │  [input_bar]                                              │
-    └───────────────────────────────────────────────────────────┘
-    """
+    """CODE-Y Boxed Terminal UI Application."""
 
     CSS = """
     Screen {
         background: #0A0A0B;
-    }
-
-    #main-container {
-        height: 1fr;
-        width: 100%;
-    }
-
-    #left-pane {
-        width: 1fr;
-        height: 100%;
-    }
-
-    #title-bar {
-        height: 1;
-        background: #111113;
-        color: #FF5F00;
-        text-style: bold;
         padding: 0 1;
-        border-bottom: solid #1A1A1D;
+        align: center middle;
+    }
+
+    #box-frame {
+        height: 100%;
+        width: 100%;
+        background: #0A0A0B;
+        border: round #2A2A2E;
+        padding: 0;
+    }
+
+    #box-frame:focus-within {
+        border: round #3A3A40;
+    }
+
+    .divider {
+        height: 1;
+        color: #2A2A2E;
+        background: #0A0A0B;
+        padding: 0 1;
     }
     """
 
@@ -92,7 +95,7 @@ class CodeYApp(App):
         Binding("ctrl+c", "quit", "Quit"),
         Binding("ctrl+l", "clear", "Clear"),
         Binding("ctrl+v", "toggle_verbose", "Verbose"),
-        Binding("ctrl+o", "toggle_tool", "Expand Tool"),
+        Binding("ctrl+o", "toggle_tool", "Expand Output"),
     ]
 
     def __init__(
@@ -113,7 +116,7 @@ class CodeYApp(App):
         self._verbose = config.ui.verbose_default
 
     def on_mount(self) -> None:
-        """Initialize theme, tools, provider router, and event subscriptions."""
+        """Initialize theme, tools, router, and event subscriptions."""
         self.register_theme(CODEY_ORANGE_THEME)
         self.theme = "codey_orange"
 
@@ -150,93 +153,89 @@ class CodeYApp(App):
         # Wire event bus to widgets
         self._wire_events()
 
-        # Update quiet status line
-        status_line = self.query_one(StatusLine)
-        status_line.update_provider(
+        # Update initial footer info
+        footer = self.query_one(FooterKeybar)
+        footer.update_provider(
             self.router.active_provider.name.upper(),
             self.router.active_provider.model_id,
         )
-        status_line.update_tool_count(registry.tool_count())
 
         # Load plugins
         self.plugin_loader = PluginLoader(registry, self.config)
-        loaded = self.plugin_loader.discover_and_load()
-        if loaded:
-            logger.info("Loaded %d plugins", len(loaded))
-            status_line.update_tool_count(registry.tool_count())
+        self.plugin_loader.discover_and_load()
 
-        # Initialize MCP servers asynchronously
+        # Initialize MCP servers in background
         self.mcp_manager = MCPClientManager(registry)
-        self.run_worker(self._init_mcp(status_line))
+        self.run_worker(self._init_mcp())
 
         # Focus input
         self.query_one(InputBar).input_widget.focus()
 
-    async def _init_mcp(self, status_line: StatusLine) -> None:
-        """Initialize MCP servers in the background."""
+    async def _init_mcp(self) -> None:
         if self.mcp_manager:
             try:
                 await self.mcp_manager.initialize()
-                if self.agent:
-                    status_line.update_tool_count(self.agent.tool_registry.tool_count())
             except Exception as e:
                 logger.error("MCP initialization failed: %s", e)
 
     def compose(self) -> ComposeResult:
-        yield Static(f" ⚡ CODE-Y — {self.project_root.name}", id="title-bar")
-        with Horizontal(id="main-container"):
-            with Vertical(id="left-pane"):
-                yield ProviderBanner()
-                yield ThoughtStream()
-                yield DiffView()
-        yield StatusLine()
-        yield InputBar(slash_registry=self.slash_registry)
+        with Vertical(id="box-frame"):
+            yield HeaderBar()
+            yield Static("─" * 400, classes="divider", id="top-divider")
+            yield GreetingArea(user_name=self.config.user.name)
+            yield InputBar(slash_registry=self.slash_registry)
+            yield ActivityFeed()
+            yield DiffView()
+            yield Static("─" * 400, classes="divider", id="bottom-divider")
+            yield FooterKeybar()
 
     def _wire_events(self) -> None:
         """Subscribe UI widgets to event bus notifications."""
-        stream = self.query_one(ThoughtStream)
-        status_line = self.query_one(StatusLine)
-        banner = self.query_one(ProviderBanner)
-        input_bar = self.query_one(InputBar)
+        feed = self.query_one(ActivityFeed)
+        footer = self.query_one(FooterKeybar)
+        header = self.query_one(HeaderBar)
+        greeting = self.query_one(GreetingArea)
 
-        # Thinking tokens → thought stream (append-only, flicker-free)
-        self.event_bus.subscribe(Events.THINKING_TOKEN, lambda token, **_: stream.add_thinking_token(token))
+        # Thinking tokens → activity feed
+        self.event_bus.subscribe(Events.THINKING_TOKEN, lambda token, **_: feed.add_thinking_token(token))
 
-        # Tool calls → intent display before execution
-        self.event_bus.subscribe(Events.TOOL_CALL_PENDING, stream.add_tool_call_pending)
+        # Tool calls → intent display before execution with ◉ in-progress glyph
+        self.event_bus.subscribe(Events.TOOL_CALL_PENDING, feed.add_tool_pending)
 
-        # Tool execution indicator
-        self.event_bus.subscribe(Events.TOOL_EXECUTING, stream.add_tool_executing)
+        # Tool results → collapsed 1-line summary with ✓ glyph
+        self.event_bus.subscribe(Events.TOOL_RESULT, feed.add_tool_result)
 
-        # Tool results → collapsed 1-line summary
-        self.event_bus.subscribe(Events.TOOL_RESULT, stream.add_tool_result)
+        # Response complete
+        def on_response(content: str, **_: object):
+            feed.add_response(content)
+            greeting.clear_task()
+            header.set_online()
 
-        # Response complete → thought stream
-        self.event_bus.subscribe(Events.RESPONSE_COMPLETE, lambda content, **_: stream.add_response(content))
+        self.event_bus.subscribe(Events.RESPONSE_COMPLETE, on_response)
 
-        # Provider failover → instant status line update + inline banner
+        # Provider failover → inline Failover row + header status update
         def on_failover(from_provider: str, to_provider: str, reason: str, elapsed: float = 0, **_: object):
-            banner.show_failover(from_provider, to_provider, reason, elapsed)
-            stream.add_failover_banner(from_provider, to_provider, reason, elapsed)
+            header.set_retrying()
+            feed.add_failover_row(from_provider, to_provider, reason, elapsed)
             if self.router:
                 active = self.router.active_provider
-                status_line.update_provider(active.name.upper(), active.model_id)
+                footer.update_provider(active.name.upper(), active.model_id)
 
         self.event_bus.subscribe(Events.PROVIDER_FAILOVER, on_failover)
 
-        # Context updates → quiet status line
-        self.event_bus.subscribe(Events.CONTEXT_UPDATE, status_line.update_context)
+        # Context updates → footer stats
+        self.event_bus.subscribe(Events.CONTEXT_UPDATE, footer.update_context)
 
-        # State transitions → status line + input bar placeholder
+        # State transitions
         def on_state(new_state: str, **_: object):
-            status_line.update_state(new_state)
-            setattr(input_bar, "agent_state", new_state)
+            footer.update_state(new_state)
+            if new_state == "thinking":
+                feed.add_thinking_start()
+            elif new_state == "error":
+                header.set_offline()
 
         self.event_bus.subscribe(Events.STATE_CHANGE, on_state)
-        self.event_bus.subscribe(Events.STATE_CHANGE, stream.add_state_change)
-
-        # Errors → thought stream
-        self.event_bus.subscribe(Events.ERROR, stream.add_error)
+        self.event_bus.subscribe(Events.ERROR, feed.add_error)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle user input submission."""
@@ -244,7 +243,6 @@ class CodeYApp(App):
         if not user_input:
             return
 
-        # Clear input box and close palette
         input_bar = self.query_one(InputBar)
         event.input.clear()
         input_bar.palette.hide()
@@ -255,9 +253,9 @@ class CodeYApp(App):
             self._handle_slash_command(user_input)
             return
 
-        # Display user message
-        stream = self.query_one(ThoughtStream)
-        stream.add_user_message(user_input)
+        # Set active task in greeting area
+        greeting = self.query_one(GreetingArea)
+        greeting.set_task(user_input)
 
         # Run agent in background worker
         if self.agent:
@@ -271,8 +269,9 @@ class CodeYApp(App):
             await self.agent.run(user_input)
         except Exception as e:
             logger.exception("Agent error")
-            stream = self.query_one(ThoughtStream)
-            stream.add_error(str(e))
+            feed = self.query_one(ActivityFeed)
+            feed.add_error(str(e))
+            self.query_one(HeaderBar).set_offline()
 
     async def _confirmation_callback(self, tool_call: ToolCall, description: str) -> bool:
         """Confirmation for destructive operations."""
@@ -280,8 +279,8 @@ class CodeYApp(App):
 
     def _handle_slash_command(self, cmd: str) -> None:
         """Dispatch registered slash commands."""
-        stream = self.query_one(ThoughtStream)
-        status_line = self.query_one(StatusLine)
+        feed = self.query_one(ActivityFeed)
+        footer = self.query_one(FooterKeybar)
         parts = cmd.strip().split(maxsplit=1)
         command_name = parts[0].lower()
         arg = parts[1] if len(parts) > 1 else ""
@@ -292,64 +291,63 @@ class CodeYApp(App):
             for c in commands:
                 lines.append(f"  [{ORANGE}]{c.usage:<18}[/] [{TEXT_DIM}]{c.description}[/]")
             lines.append("")
-            stream.log_widget.write("\n".join(lines))
+            feed.log_widget.write("\n".join(lines))
 
         elif command_name == "/model":
             if arg.lower() == "test" and self.router:
-                stream.log_widget.write(f"\n  [{ORANGE}]⚡ Testing live connectivity to all configured models...[/]\n")
+                feed.log_widget.write(f"\n  [{ORANGE}]⚡ Testing live connectivity to all configured models...[/]\n")
                 async def _run_tests():
                     results = await self.router.test_all_models()
                     for r in results:
                         status_glyph = f"[{SUCCESS}]✓[/]" if r["success"] else f"[{ERROR}]✗[/]"
-                        stream.log_widget.write(f"    {status_glyph} [{ORANGE}]{r['alias']:<20}[/] {r['message']}")
-                    stream.log_widget.write("")
+                        feed.log_widget.write(f"    {status_glyph} [{ORANGE}]{r['alias']:<20}[/] {r['message']}")
+                    feed.log_widget.write("")
                 self.run_worker(_run_tests())
 
             elif arg and self.router:
                 if self.router.set_override(arg):
                     active = self.router.active_provider
-                    stream.log_widget.write(
+                    feed.log_widget.write(
                         f"\n  [{ORANGE}]✓ Switched active provider to {active.display_name()}[/]\n"
                     )
-                    status_line.update_provider(active.name.upper(), active.model_id)
+                    footer.update_provider(active.name.upper(), active.model_id)
                 else:
                     available = ", ".join(p.model_alias for p in self.router.chain)
-                    stream.log_widget.write(
+                    feed.log_widget.write(
                         f"\n  [{TEXT_DIM}]Model '{arg}' not found. Available aliases: {available}[/]\n"
                     )
             elif self.router:
                 catalog = self.router.get_model_catalog()
-                stream.log_widget.write(f"\n  [bold {ORANGE}]CONFIGURED PROVIDERS & MODELS:[/]\n")
+                feed.log_widget.write(f"\n  [bold {ORANGE}]CONFIGURED PROVIDERS & MODELS:[/]\n")
                 for entry in catalog:
                     p_name = entry["provider"].upper()
                     if entry["key_env"]:
-                        key_status = f"[{SUCCESS}]✓ Key set ({entry['key_env']})[/]" if entry["has_key"] else f"[{ERROR}]✗ Key missing: export {entry['key_env']}=...[/]"
+                        key_status = f"[{SUCCESS}]✓ Key configured ({entry['key_env']})[/]" if entry["has_key"] else f"[{ERROR}]✗ Key missing: export {entry['key_env']}=...[/]"
                     else:
                         key_status = f"[{SUCCESS}]✓ Local server[/]"
 
-                    stream.log_widget.write(f"  [bold]{p_name}[/] [dim]({entry['base_url']})[/]  {key_status}")
+                    feed.log_widget.write(f"  [bold]{p_name}[/] [dim]({entry['base_url']})[/]  {key_status}")
                     for m in entry["models"]:
                         active_badge = f" [bold {ORANGE}]▶ (ACTIVE)[/]" if m["is_active"] else ""
                         chain_badge = f"[{TEXT_MUTED}]in chain[/]" if m["in_chain"] else ""
-                        stream.log_widget.write(f"    • [{ORANGE}]{m['alias']:<20}[/] [dim]{m['model_id']:<30}[/] {chain_badge}{active_badge}")
-                    stream.log_widget.write("")
+                        feed.log_widget.write(f"    • [{ORANGE}]{m['alias']:<20}[/] [dim]{m['model_id']:<30}[/] {chain_badge}{active_badge}")
+                    feed.log_widget.write("")
 
                 chain_str = " → ".join(p.model_alias for p in self.router.chain)
-                stream.log_widget.write(f"  [dim]Failover Chain:[/] [dim]{chain_str}[/dim]")
-                stream.log_widget.write(f"  [dim]Usage:[/] [{ORANGE}]/model <alias>[/]  |  [{ORANGE}]/model test[/] (live check)\n")
+                feed.log_widget.write(f"  [dim]Failover Chain:[/] [dim]{chain_str}[/dim]")
+                feed.log_widget.write(f"  [dim]Usage:[/] [{ORANGE}]/model <alias>[/]  |  [{ORANGE}]/model test[/] (live check)\n")
 
         elif command_name == "/verbose":
             self._verbose = not self._verbose
-            stream_widget = self.query_one(ThoughtStream)
-            stream_widget.verbose = self._verbose
-            stream.log_widget.write(
+            feed.verbose = self._verbose
+            feed.log_widget.write(
                 f"\n  [{ORANGE}]Verbose stream: {'ON' if self._verbose else 'OFF'}[/]\n"
             )
 
         elif command_name == "/context" and self.agent:
             usage = self.agent.context_manager.get_usage(self.agent.conversation)
             approx = "≈" if usage["approximate"] else ""
-            stream.log_widget.write(
+            feed.log_widget.write(
                 f"\n  [{ORANGE}]Context Window Usage:[/]\n"
                 f"    Used:      {approx}{usage['used']:,} tokens ({usage['percent']:.1f}%)\n"
                 f"    Capacity:  {usage['total']:,} tokens\n"
@@ -358,56 +356,53 @@ class CodeYApp(App):
 
         elif command_name == "/tools" and self.agent:
             tools = self.agent.tool_registry.list_tools()
-            stream.log_widget.write(f"\n  [{ORANGE}]Registered Tools ({len(tools)}):[/]")
+            feed.log_widget.write(f"\n  [{ORANGE}]Registered Tools ({len(tools)}):[/]")
             for name in sorted(tools):
                 t = self.agent.tool_registry.get_tool(name)
                 desc = t.description[:60] if t else ""
-                stream.log_widget.write(f"    • [{ORANGE}]{name:<18}[/] [{TEXT_DIM}]{desc}[/]")
-            stream.log_widget.write("")
+                feed.log_widget.write(f"    • [{ORANGE}]{name:<18}[/] [{TEXT_DIM}]{desc}[/]")
+            feed.log_widget.write("")
 
         elif command_name == "/mcp":
             if self.mcp_manager:
                 servers = self.mcp_manager.list_servers()
                 if not servers:
-                    stream.log_widget.write(f"\n  [{TEXT_DIM}]No MCP servers configured in ~/.codey/mcp_config.yaml[/]\n")
+                    feed.log_widget.write(f"\n  [{TEXT_DIM}]No MCP servers configured in ~/.codey/mcp_config.yaml[/]\n")
                 else:
-                    stream.log_widget.write(f"\n  [{ORANGE}]Connected MCP Servers ({len(servers)}):[/]")
+                    feed.log_widget.write(f"\n  [{ORANGE}]Connected MCP Servers ({len(servers)}):[/]")
                     for s in servers:
-                        stream.log_widget.write(f"    • [{ORANGE}]{s['name']}[/] ({s['transport']}) — tools: {', '.join(s['tools'])}")
-                    stream.log_widget.write("")
+                        feed.log_widget.write(f"    • [{ORANGE}]{s['name']}[/] ({s['transport']}) — tools: {', '.join(s['tools'])}")
+                    feed.log_widget.write("")
             else:
-                stream.log_widget.write(f"\n  [{TEXT_DIM}]MCP Manager not active[/]\n")
+                feed.log_widget.write(f"\n  [{TEXT_DIM}]MCP Manager not active[/]\n")
 
         elif command_name == "/plugins":
             if self.plugin_loader:
                 plugins = self.plugin_loader.list_plugins()
                 if not plugins:
-                    stream.log_widget.write(f"\n  [{TEXT_DIM}]No plugins installed in ~/.codey/plugins/[/]\n")
+                    feed.log_widget.write(f"\n  [{TEXT_DIM}]No plugins installed in ~/.codey/plugins/[/]\n")
                 else:
-                    stream.log_widget.write(f"\n  [{ORANGE}]Installed Plugins ({len(plugins)}):[/]")
+                    feed.log_widget.write(f"\n  [{ORANGE}]Installed Plugins ({len(plugins)}):[/]")
                     for p in plugins:
-                        stream.log_widget.write(f"    • [{ORANGE}]{p['name']}[/] v{p['version']} — {p['description']}")
-                    stream.log_widget.write("")
+                        feed.log_widget.write(f"    • [{ORANGE}]{p['name']}[/] v{p['version']} — {p['description']}")
+                    feed.log_widget.write("")
 
         elif command_name == "/clear" and self.agent:
             self.agent.conversation.clear()
             self.agent._initialized = False
             self.agent.initialize()
-            stream.clear()
-            stream.log_widget.write(f"\n  [{ORANGE}]✓ Conversation history cleared.[/]\n")
+            feed.clear()
+            feed.log_widget.write(f"\n  [{ORANGE}]✓ Conversation history cleared.[/]\n")
 
         else:
-            stream.log_widget.write(f"\n  [{TEXT_DIM}]Unknown command: {command_name}. Type /help for commands.[/]\n")
+            feed.log_widget.write(f"\n  [{TEXT_DIM}]Unknown command: {command_name}. Type /help for commands.[/]\n")
 
     def action_clear(self) -> None:
-        """Clear conversation."""
         self._handle_slash_command("/clear")
 
     def action_toggle_verbose(self) -> None:
-        """Toggle verbose mode."""
         self._handle_slash_command("/verbose")
 
     def action_toggle_tool(self) -> None:
-        """Toggle expanding/collapsing the last tool output."""
-        stream = self.query_one(ThoughtStream)
-        stream.action_toggle_tool_expansion()
+        feed = self.query_one(ActivityFeed)
+        feed.action_toggle_expansion()

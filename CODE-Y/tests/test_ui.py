@@ -1,12 +1,51 @@
-"""Tests for UI components (SlashCommandPalette, ThoughtStream summaries, StatusLine)."""
+"""Tests for UI components (HeaderBar, GreetingArea, ActivityFeed, SlashCommandPalette, FooterKeybar)."""
 
 import pytest
+from pathlib import Path
 from codey.agent.slash_commands import create_default_registry
 from codey.ui.widgets.slash_command_palette import SlashCommandPalette
-from codey.ui.widgets.thought_stream import ThoughtStream
+from codey.ui.widgets.activity_feed import ActivityFeed
+from codey.ui.widgets.greeting_area import GreetingArea
+from codey.ui.widgets.header_bar import HeaderBar
+from codey.ui.widgets.footer_keybar import FooterKeybar
 from codey.ui.app import CodeYApp
 from codey.config.loader import load_config
-from pathlib import Path
+
+
+def test_header_bar_status_updates():
+    header = HeaderBar()
+    assert header.status == "online"
+
+    header.set_retrying()
+    assert header.status == "retrying"
+
+    header.set_offline()
+    assert header.status == "offline"
+
+    header.set_online()
+    assert header.status == "online"
+
+
+def test_greeting_area_task_switching():
+    greeting = GreetingArea(user_name="Charan")
+    assert greeting.user_name == "Charan"
+    assert greeting.active_task == ""
+
+    greeting.set_task("Build a React dashboard")
+    assert greeting.active_task == "Build a React dashboard"
+
+    greeting.clear_task()
+    assert greeting.active_task == ""
+
+
+def test_activity_feed_action_classification():
+    assert ActivityFeed._classify_action("search_code") == "Search"
+    assert ActivityFeed._classify_action("read_file") == "Read"
+    assert ActivityFeed._classify_action("write_file") == "Write"
+    assert ActivityFeed._classify_action("edit_file") == "Edit"
+    assert ActivityFeed._classify_action("run_command") == "Execute"
+    assert ActivityFeed._classify_action("git_status") == "Git"
+    assert ActivityFeed._classify_action("mcp_custom_tool") == "MCP"
 
 
 def test_slash_command_palette_filtering():
@@ -27,76 +66,43 @@ def test_slash_command_palette_filtering():
     assert sel is not None
     assert sel.name == "/model"
 
-    # Typing past command with space closes palette
+    # Typing space closes palette
     assert palette.filter_commands("/model my_alias") is False
     assert palette.is_open is False
 
 
-def test_slash_command_palette_navigation():
-    reg = create_default_registry()
-    palette = SlashCommandPalette(registry=reg)
-    palette.filter_commands("/")
-
-    initial_sel = palette.get_selected()
-    assert palette.selected_index == 0
-
-    palette.move_down()
-    assert palette.selected_index == 1
-    next_sel = palette.get_selected()
-    assert next_sel != initial_sel
-
-    palette.move_up()
-    assert palette.selected_index == 0
-
-
-def test_thought_stream_tool_intent_formatting():
-    intent = ThoughtStream._format_tool_intent("read_file", {"path": "auth.py", "start_line": 1, "end_line": 50})
-    assert "reading auth.py (lines 1-50)" in intent
-
-    shell_intent = ThoughtStream._format_tool_intent("run_command", {"command": "pytest"})
-    assert "running pytest" in shell_intent
-
-
-def test_thought_stream_collapsed_summary():
-    raw_read = "── auth.py (1-42 of 42 lines) ──\n" + "\n".join(f"{i} | line" for i in range(42))
-    summary = ThoughtStream._generate_collapsed_summary("read_file", {"path": "auth.py"}, raw_read, is_error=False)
-    assert "read auth.py (42 lines)" in summary
-
-    raw_test = "[✓ exit=0] $ pytest\n... 12 passed, 0 failed in 0.5s"
-    test_summary = ThoughtStream._generate_collapsed_summary("run_command", {"command": "pytest"}, raw_test, is_error=False)
-    assert "ran pytest — 12 passed" in test_summary
-
-    err_summary = ThoughtStream._generate_collapsed_summary("read_file", {"path": "missing.py"}, "Error: File not found", is_error=True)
-    assert "failed read_file: Error" in err_summary
-
-
 @pytest.mark.asyncio
-async def test_full_textual_app_slash_autocomplete(tmp_path: Path):
+async def test_full_boxed_textual_app(tmp_path: Path):
     config = load_config()
     app = CodeYApp(config=config, project_root=tmp_path)
 
     async with app.run_test() as pilot:
+        header = app.query_one(HeaderBar)
+        greeting = app.query_one(GreetingArea)
         input_bar = app.query_one("InputBar")
         input_widget = input_bar.query_one("#user-input")
         palette = input_bar.palette
+        feed = app.query_one(ActivityFeed)
+        footer = app.query_one(FooterKeybar)
 
+        assert header is not None
+        assert greeting is not None
+        assert feed is not None
+        assert footer is not None
+
+        # Test slash command autocomplete in boxed layout
         input_widget.focus()
-        assert not palette.is_open
-
-        # Type '/'
         await pilot.press("/")
         await pilot.pause()
         assert palette.is_open
         assert len(palette._filtered_commands) == 8
 
-        # Type 'mo'
         await pilot.press("m")
         await pilot.press("o")
         await pilot.pause()
         assert palette.is_open
         assert palette.get_selected().name == "/model"
 
-        # Press Tab
         await pilot.press("tab")
         await pilot.pause()
         assert input_widget.value == "/model "

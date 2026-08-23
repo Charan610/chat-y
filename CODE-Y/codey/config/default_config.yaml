@@ -1,6 +1,9 @@
 # CODE-Y Default Configuration
 # Copy to ~/.codey/config.yaml and customize
 
+user:
+  name: null  # Optional user display name for personalized greetings (e.g. Charan)
+
 providers:
   nim:
     api_key_env: NVIDIA_API_KEY
