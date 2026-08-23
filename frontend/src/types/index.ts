@@ -122,6 +122,7 @@ export interface ChatRequest {
   model?: string;
   web_search?: boolean;
   file_ids?: string[];
+  messages?: { role: string; content: string }[];
   api_keys?: Record<string, string>;
   api_configs?: Record<string, { api_key: string; base_url?: string }>;
 }

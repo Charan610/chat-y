@@ -310,12 +310,11 @@ async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             # Send conversation_id to client first
             yield f'data: {json.dumps({"type": "conversation_id", "content": conversation_id})}\n\n'
 
-            # Get conversation history
+            # Get conversation history from SQLite
             history_result = await db.execute(
                 select(Message)
                 .where(Message.conversation_id == conversation_id)
                 .order_by(Message.created_at.asc())
-                .limit(50)
             )
             history = history_result.scalars().all()
 
@@ -331,8 +330,15 @@ async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             else:
                 messages.append({"role": "system", "content": date_system_prompt})
 
-            for h in history:
-                messages.append({"role": h.role, "content": h.content})
+            if history:
+                for h in history:
+                    messages.append({"role": h.role, "content": h.content})
+            elif request.messages:
+                for m in request.messages:
+                    if isinstance(m, dict) and m.get("content"):
+                        role = m.get("role", "user")
+                        if role != "system":
+                            messages.append({"role": role, "content": m.get("content", "")})
 
             # Handle web search (auto-trigger if query mentions temporal terms or request.web_search is True)
             import re
@@ -351,7 +357,11 @@ async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                 except Exception:
                     pass  # Continue without search results
 
-            messages.append({"role": "user", "content": user_content})
+            # Append current user turn if not already present as the last message
+            if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != user_content:
+                messages.append({"role": "user", "content": user_content})
+
+            print(f"[FastAPI Chat Stream] Sending {len(messages)} messages to {request.model} for conversation {conversation_id}", flush=True)
 
             # Save user message
             user_msg = Message(

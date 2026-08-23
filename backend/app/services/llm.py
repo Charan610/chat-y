@@ -49,26 +49,49 @@ class LLMService:
         else:
             return model_id
 
+    def _normalize_provider(self, p: str) -> str:
+        clean = p.lower().strip()
+        if clean in ("nvidia", "nvidia_nim", "nim"):
+            return "nvidia_nim"
+        if clean in ("google", "gemini"):
+            return "google"
+        if clean in ("anthropic", "claude"):
+            return "anthropic"
+        return clean
+
+    def _parse_provider_from_model(self, model: str) -> str:
+        """Extract provider from model string."""
+        if "/" in model:
+            return self._normalize_provider(model.split("/")[0])
+        if model.startswith(("gpt-", "o1", "o3", "chatgpt")):
+            return "openai"
+        if model.startswith("claude-"):
+            return "anthropic"
+        if model.startswith("gemini"):
+            return "google"
+        return "openai"
+
     def set_api_keys_for_request(self, provider: str, api_key: str, base_url: Optional[str] = None):
         """Set environment variables for litellm to use per provider."""
-        if provider == "groq":
+        norm = self._normalize_provider(provider)
+        if norm == "groq":
             os.environ["GROQ_API_KEY"] = api_key
-        elif provider == "nvidia_nim":
+        elif norm == "nvidia_nim":
             os.environ["NVIDIA_NIM_API_KEY"] = api_key
             if base_url:
                 os.environ["NVIDIA_NIM_API_BASE"] = base_url
-        elif provider == "openai":
+        elif norm == "openai":
             os.environ["OPENAI_API_KEY"] = api_key
             if base_url:
                 os.environ["OPENAI_BASE_URL"] = base_url
-        elif provider == "anthropic":
+        elif norm == "anthropic":
             os.environ["ANTHROPIC_API_KEY"] = api_key
-        elif provider == "google":
+        elif norm == "google":
             os.environ["GEMINI_API_KEY"] = api_key
             os.environ["GOOGLE_API_KEY"] = api_key
-        elif provider == "openrouter":
+        elif norm == "openrouter":
             os.environ["OPENROUTER_API_KEY"] = api_key
-        elif provider == "ollama":
+        elif norm == "ollama":
             if base_url:
                 os.environ["OLLAMA_API_BASE"] = base_url
 
@@ -88,12 +111,6 @@ class LLMService:
             output_cost = (completion_tokens / 1_000_000) * pricing["output"]
             return round(input_cost + output_cost, 8)
 
-    def _parse_provider_from_model(self, model: str) -> str:
-        """Extract provider from model string."""
-        if "/" in model:
-            return model.split("/")[0]
-        return "openai"
-
     async def stream_chat(
         self,
         messages: List[Dict[str, str]],
@@ -111,8 +128,14 @@ class LLMService:
         try:
             # Determine provider and set API keys
             provider = self._parse_provider_from_model(model)
-            if provider in api_keys:
-                key_info = api_keys[provider]
+            key_info = api_keys.get(provider) or api_keys.get(self._normalize_provider(provider))
+            if not key_info:
+                # check aliases
+                for k, v in api_keys.items():
+                    if self._normalize_provider(k) == provider:
+                        key_info = v
+                        break
+            if key_info:
                 self.set_api_keys_for_request(provider, key_info["api_key"], key_info.get("base_url"))
 
             # Build extra kwargs

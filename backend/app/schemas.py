@@ -236,6 +236,7 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     user_id: Optional[str] = None
     message: str
+    messages: Optional[List[Dict[str, Any]]] = None
     model: str = "groq/llama-3.3-70b-versatile"
     files: List[str] = []          # list of uploaded file IDs
     web_search: bool = False

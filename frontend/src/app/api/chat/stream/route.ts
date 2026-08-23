@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       message,
+      messages: clientMessages = [],
       model: modelStr = 'groq/llama-3.3-70b-versatile',
       conversation_id,
       web_search,
@@ -136,29 +137,87 @@ export async function POST(req: Request) {
 
     // ── Build messages ────────────────────────────────────────────────────
     const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const systemPromptText = `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant. Always provide accurate, current, and real-time answers.`;
 
-    const providerBody = isAnthropic ? {
-      model: rawModelId,
-      max_tokens: 4096,
-      system: `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant.`,
-      messages: [{ role: 'user', content: message + extraPrompt }],
-      stream: true,
-    } : {
-      model: rawModelId,
-      messages: [
-        {
-          role: 'system',
-          content: `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant. Always provide accurate, current, and real-time answers.`,
-        },
-        {
-          role: 'user',
-          content: message + extraPrompt,
-        },
-      ],
-      stream: true,
-      temperature: 0.7,
-      ...(activeProvider === 'ollama' ? { stream: true } : {}),
-    };
+    // Clean and normalize history messages
+    const historyMessages: { role: string; content: string }[] = [];
+    if (Array.isArray(clientMessages)) {
+      for (const m of clientMessages) {
+        if (m && typeof m.content === 'string' && m.content.trim()) {
+          const role = (m.role === 'assistant' || m.role === 'system') ? m.role : 'user';
+          historyMessages.push({ role, content: m.content });
+        }
+      }
+    }
+
+    const currentTurnContent = message + extraPrompt;
+    let providerBody: any;
+
+    if (isAnthropic) {
+      // Anthropic messages must alternate user / assistant, and system prompt is a top-level param
+      const anthropicMsgs: { role: 'user' | 'assistant'; content: string }[] = [];
+      for (const m of historyMessages) {
+        if (m.role === 'system') continue;
+        const role = m.role as 'user' | 'assistant';
+        const lastMsg = anthropicMsgs[anthropicMsgs.length - 1];
+        if (lastMsg && lastMsg.role === role) {
+          lastMsg.content += `\n\n${m.content}`;
+        } else {
+          anthropicMsgs.push({ role, content: m.content });
+        }
+      }
+
+      // Append current user message
+      const last = anthropicMsgs[anthropicMsgs.length - 1];
+      if (last && last.role === 'user') {
+        if (last.content !== currentTurnContent) {
+          last.content = currentTurnContent;
+        }
+      } else {
+        anthropicMsgs.push({ role: 'user', content: currentTurnContent });
+      }
+
+      // Ensure first message is user
+      if (anthropicMsgs.length > 0 && anthropicMsgs[0].role !== 'user') {
+        anthropicMsgs.unshift({ role: 'user', content: 'Hello' });
+      }
+
+      providerBody = {
+        model: rawModelId,
+        max_tokens: 4096,
+        system: systemPromptText,
+        messages: anthropicMsgs,
+        stream: true,
+      };
+
+      console.log(`[Chat Stream Proxy] Sending ${anthropicMsgs.length} messages to Anthropic (${rawModelId}) for conv: ${conversation_id || 'new'}`);
+    } else {
+      // Standard OpenAI / Groq / Google Gemini / NVIDIA NIM / OpenRouter / Ollama format
+      const formattedMsgs: { role: string; content: string }[] = [
+        { role: 'system', content: systemPromptText }
+      ];
+
+      for (const m of historyMessages) {
+        if (m.role === 'system') continue;
+        formattedMsgs.push({ role: m.role, content: m.content });
+      }
+
+      // Append current user turn if not already the last turn
+      const lastMsg = formattedMsgs[formattedMsgs.length - 1];
+      if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== currentTurnContent) {
+        formattedMsgs.push({ role: 'user', content: currentTurnContent });
+      }
+
+      providerBody = {
+        model: rawModelId,
+        messages: formattedMsgs,
+        stream: true,
+        temperature: 0.7,
+        ...(activeProvider === 'ollama' ? { stream: true } : {}),
+      };
+
+      console.log(`[Chat Stream Proxy] Sending ${formattedMsgs.length} messages to ${activeProvider} (${rawModelId}) for conv: ${conversation_id || 'new'}`);
+    }
 
     // ── Call provider API (server-side, no CORS issues) ───────────────────
     const providerRes = await fetch(endpoint, {

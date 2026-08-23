@@ -194,17 +194,37 @@ export async function streamDirectCloud(
       content: `Current Date: ${todayStr}. You are Chat-Y, an up-to-date, intelligent AI assistant. Always provide accurate, current, and real-time answers.`
     };
 
-    const userMessage = {
-      role: 'user',
-      content: req.message + extraPrompt
-    };
+    const historyMessages: { role: string; content: string }[] = [];
+    if (Array.isArray(req.messages)) {
+      for (const m of req.messages) {
+        if (m && typeof m.content === 'string' && m.content.trim()) {
+          const role = (m.role === 'assistant' || m.role === 'system') ? m.role : 'user';
+          if (role !== 'system') {
+            historyMessages.push({ role, content: m.content });
+          }
+        }
+      }
+    }
+
+    const currentTurnContent = req.message + extraPrompt;
+    const bodyMessages: { role: string; content: string }[] = [
+      systemMessage,
+      ...historyMessages,
+    ];
+
+    const lastMsg = bodyMessages[bodyMessages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== currentTurnContent) {
+      bodyMessages.push({ role: 'user', content: currentTurnContent });
+    }
 
     const bodyData = {
       model: rawModelId,
-      messages: [systemMessage, userMessage],
+      messages: bodyMessages,
       stream: true,
       temperature: 0.7,
     };
+
+    console.log(`[Direct Cloud] Sending ${bodyData.messages.length} messages to ${activeProvider} (${rawModelId}) for conv: ${convId}`);
 
     const res = await fetch(endpoint, {
       method: 'POST',

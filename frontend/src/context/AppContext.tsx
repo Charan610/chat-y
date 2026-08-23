@@ -730,6 +730,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         model: state.activeModel,
         web_search: state.webSearchEnabled,
         file_ids: fileIds,
+        messages: baseMessages.map(m => ({ role: m.role, content: m.content })),
       },
       (chunk) => {
         streamContentRef.current += chunk;
