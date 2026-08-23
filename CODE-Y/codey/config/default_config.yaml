@@ -9,13 +9,48 @@ providers:
     api_key_env: NVIDIA_API_KEY
     base_url: https://integrate.api.nvidia.com/v1
     models:
+      # Llama 3.3 & 3.1 Family
       nim_llama_3_3: meta/llama-3.3-70b-instruct
+      nim_llama_3_1_405b: meta/llama-3.1-405b-instruct
+      nim_llama_3_1_70b: meta/llama-3.1-70b-instruct
+      nim_llama_3_1_8b: meta/llama-3.1-8b-instruct
+      nim_llama_3_2_3b: meta/llama-3.2-3b-instruct
+      nim_llama_3_2_1b: meta/llama-3.2-1b-instruct
+
+      # NVIDIA Nemotron Series
+      nim_nemotron_70b: nvidia/llama-3.1-nemotron-70b-instruct
+      nim_nemotron_51b: nvidia/llama-3.1-nemotron-51b-instruct
+      nim_nemotron_4_340b: nvidia/nemotron-4-340b-instruct
+
+      # DeepSeek Reasoning & Chat
       nim_deepseek_r1: deepseek-ai/deepseek-r1
       nim_deepseek_v3: deepseek-ai/deepseek-v3
       nim_deepseek_v4: deepseek-ai/deepseek-v4
+
+      # Mistral AI Series
       nim_mistral_large: mistralai/mistral-large-2-instruct
-      nim_llama_3_1_405b: meta/llama-3.1-405b-instruct
+      nim_codestral_22b: mistralai/codestral-22b-instruct-v0.1
+      nim_mixtral_8x22b: mistralai/mixtral-8x22b-instruct-v0.1
+      nim_mixtral_8x7b: mistralai/mixtral-8x7b-instruct-v0.1
+      nim_mistral_7b: mistralai/mistral-7b-instruct-v0.3
+
+      # Qwen 2.5 Coding & Instruct
       nim_qwen_72b: qwen/qwen2.5-72b-instruct
+      nim_qwen_32b: qwen/qwen2.5-32b-instruct
+      nim_qwen_7b: qwen/qwen2.5-7b-instruct
+      nim_qwen_coder_32b: qwen/qwen2.5-coder-32b-instruct
+      nim_qwen_coder_7b: qwen/qwen2.5-coder-7b-instruct
+
+      # Google Gemma & Microsoft Phi
+      nim_gemma_2_27b: google/gemma-2-27b-it
+      nim_gemma_2_9b: google/gemma-2-9b-it
+      nim_phi_3_5_mini: microsoft/phi-3.5-mini-instruct
+      nim_phi_3_5_moe: microsoft/phi-3.5-moe-instruct
+
+      # Enterprise & Specialized
+      nim_arctic: snowflake/arctic
+      nim_dbrx: databricks/dbrx-instruct
+      nim_granite_code: ibm/granite-34b-code-instruct
 
   groq:
     api_key_env: GROQ_API_KEY
@@ -26,6 +61,7 @@ providers:
       groq_llama_3_1_8b: llama-3.1-8b-instant
       groq_mixtral_8x7b: mixtral-8x7b-32768
       groq_gemma_2_9b: gemma2-9b-it
+      groq_llama_guard: llama-guard-3-8b
 
   gemini:
     api_key_env: GEMINI_API_KEY
@@ -35,6 +71,7 @@ providers:
       gemini_2_5_flash: gemini-2.5-flash
       gemini_2_0_flash: gemini-2.0-flash
       gemini_1_5_pro: gemini-1.5-pro
+      gemini_1_5_flash: gemini-1.5-flash
 
   local:
     base_url: http://localhost:11434/v1
@@ -43,6 +80,8 @@ providers:
       local_deepseek_r1: deepseek-r1
       local_qwen_coder: qwen2.5-coder
       local_codellama: codellama
+      local_mistral: mistral
+      local_phi3: phi3
 
 routing:
   default_chain:

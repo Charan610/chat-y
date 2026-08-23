@@ -199,17 +199,51 @@ class ProviderRouter:
                     return p
         return self.chain[self.active_index]
 
-    def set_override(self, model_alias: str) -> bool:
-        """Force a specific provider for the rest of the session.
+    def set_override(self, model_alias_or_id: str) -> bool:
+        """Force a specific model/provider for the rest of the session.
 
-        Returns True if the alias was found in the chain.
+        Accepts alias names (e.g. 'nim_nemotron_70b', 'groq_deepseek_r1') or
+        exact model IDs (e.g. 'nvidia/llama-3.1-nemotron-70b-instruct').
         """
+        # 1. Check if already in active chain
         for p in self.chain:
-            if p.model_alias == model_alias:
-                self.manual_override = model_alias
-                logger.info("Manual override set: %s", model_alias)
+            if p.model_alias == model_alias_or_id or p.model_id == model_alias_or_id:
+                self.manual_override = p.model_alias
+                logger.info("Manual override set to existing provider: %s", p.model_alias)
                 return True
-        logger.warning("Override alias '%s' not found in chain", model_alias)
+
+        # 2. Check if configured in any provider in config
+        for p_name, p_cfg in self.config.providers.items():
+            # Check alias
+            if model_alias_or_id in p_cfg.models:
+                model_id = p_cfg.models[model_alias_or_id]
+                new_provider = _create_provider(p_name, model_alias_or_id, model_id, p_cfg)
+                self.chain.insert(0, new_provider)
+                self.health[model_alias_or_id] = ProviderHealth()
+                self.manual_override = model_alias_or_id
+                return True
+
+            # Check exact model ID match
+            for alias, mid in p_cfg.models.items():
+                if mid == model_alias_or_id:
+                    new_provider = _create_provider(p_name, alias, mid, p_cfg)
+                    self.chain.insert(0, new_provider)
+                    self.health[alias] = ProviderHealth()
+                    self.manual_override = alias
+                    return True
+
+        # 3. Dynamic fallback for NVIDIA / Groq exact model IDs
+        p_name = "nim" if ("/" in model_alias_or_id or "nvidia" in model_alias_or_id) else "groq"
+        if p_name in self.config.providers:
+            p_cfg = self.config.providers[p_name]
+            alias = f"{p_name}_{model_alias_or_id.split('/')[-1]}"
+            new_provider = _create_provider(p_name, alias, model_alias_or_id, p_cfg)
+            self.chain.insert(0, new_provider)
+            self.health[alias] = ProviderHealth()
+            self.manual_override = alias
+            return True
+
+        logger.warning("Override model '%s' could not be resolved", model_alias_or_id)
         return False
 
     def clear_override(self) -> None:

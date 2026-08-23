@@ -82,6 +82,19 @@ class Provider(ABC):
             base_url=self.config.base_url,
         )
 
+    async def fetch_live_models(self) -> list[str]:
+        """Query provider's /v1/models endpoint to discover all available models dynamically."""
+        api_key = self._resolve_api_key()
+        if not api_key and self.name != "local":
+            return []
+        try:
+            import asyncio
+            response = await asyncio.wait_for(self.client.models.list(), timeout=4.0)
+            model_ids = [m.id for m in response.data]
+            return sorted(model_ids)
+        except Exception:
+            return []
+
     @abstractmethod
     async def complete(
         self,
