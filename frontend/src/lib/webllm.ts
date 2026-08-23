@@ -164,8 +164,9 @@ export async function chatWithWebLLM(
     return;
   }
 
+  let fullText = '';
+
   try {
-    let fullText = '';
 
     const completion = await engineInstance.chat.completions.create({
       messages: messages as webllm.ChatCompletionMessageParam[],
@@ -186,10 +187,14 @@ export async function chatWithWebLLM(
     }
 
     // Get usage stats
-    const usage = await engineInstance.runtimeStatsText();
-    const statsMatch = usage.match(/(\d+)/g) || [];
-    const promptTokens = parseInt(statsMatch[0] || '0', 10);
-    const completionTokens = parseInt(statsMatch[1] || '0', 10);
+    let promptTokens = 0;
+    let completionTokens = 0;
+    try {
+      const usage = await engineInstance.runtimeStatsText();
+      const statsMatch = usage.match(/(\d+)/g) || [];
+      promptTokens = parseInt(statsMatch[0] || '0', 10);
+      completionTokens = parseInt(statsMatch[1] || '0', 10);
+    } catch {}
 
     onDone(fullText, {
       promptTokens,
@@ -197,7 +202,14 @@ export async function chatWithWebLLM(
       totalTokens: promptTokens + completionTokens,
     });
   } catch (err) {
-    if (signal?.aborted) return;
+    if (signal?.aborted) {
+      onDone(fullText, {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      });
+      return;
+    }
     const errorMsg = err instanceof Error ? err.message : String(err);
     onError(`WebLLM inference failed: ${errorMsg}`);
   }

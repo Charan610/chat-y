@@ -764,6 +764,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        const isStopped = abortRef.current?.signal.aborted || false;
         const assistantMsg: Message = {
           id: `assistant-${Date.now()}`,
           conversation_id: finalConvId,
@@ -777,7 +778,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           latency_ms: finalMetadata.latency_ms || 0,
           estimated_cost: finalMetadata.estimated_cost || 0,
           reasoning_content: finalMetadata.reasoning_content,
-          metadata: finalMetadata.metadata,
+          metadata: {
+            ...(finalMetadata.metadata || {}),
+            ...(isStopped ? { stopped: true } : {}),
+          },
           created_at: new Date().toISOString(),
           is_pinned: false,
         };
@@ -823,9 +827,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       (err) => {
         dispatch({ type: 'SET_STREAMING', payload: false });
+        const partialText = streamContentRef.current;
+        const targetId = resolvedConvId || targetConvId || '';
+        if (partialText && partialText.trim() && targetId) {
+          const assistantMsg: Message = {
+            id: `assistant-${Date.now()}`,
+            conversation_id: targetId,
+            role: 'assistant',
+            content: partialText,
+            model: finalMetadata.model || state.activeModel,
+            provider: finalMetadata.provider || 'cloud',
+            prompt_tokens: finalMetadata.prompt_tokens || 0,
+            completion_tokens: finalMetadata.completion_tokens || 0,
+            total_tokens: finalMetadata.total_tokens || 0,
+            latency_ms: finalMetadata.latency_ms || 0,
+            estimated_cost: finalMetadata.estimated_cost || 0,
+            reasoning_content: finalMetadata.reasoning_content,
+            metadata: {
+              ...(finalMetadata.metadata || {}),
+              stopped: true,
+            },
+            created_at: new Date().toISOString(),
+            is_pinned: false,
+          };
+          const finalMessages = [...updatedWithUser, assistantMsg];
+          dispatch({ type: 'ADD_MESSAGE', payload: assistantMsg });
+          saveMessagesToStorage(targetId, finalMessages);
+          saveMessageToBackend(targetId, 'assistant', partialText, finalMetadata.provider || 'cloud').catch(() => {});
+        }
         dispatch({ type: 'CLEAR_STREAM' });
         dispatch({ type: 'SET_STREAMING_ID', payload: null });
-        showToast(`Error: ${err}`, 'error');
+        if (!ctrl.signal.aborted) {
+          showToast(`Error: ${err}`, 'error');
+        }
       },
       ctrl.signal
     );

@@ -161,8 +161,9 @@ export async function streamDirectCloud(
     }
   }
 
+  const convId = req.conversation_id || `conv-${Date.now()}`;
+
   try {
-    const convId = req.conversation_id || `conv-${Date.now()}`;
     onMetadata({
       model: rawModelId,
       provider: activeProvider,
@@ -248,7 +249,16 @@ export async function streamDirectCloud(
     const decoder = new TextDecoder();
     let buffer = '';
 
+    let doneCalled = false;
+    const triggerDone = () => {
+      if (!doneCalled) {
+        doneCalled = true;
+        onDone(convId);
+      }
+    };
+
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -271,10 +281,13 @@ export async function streamDirectCloud(
       }
     }
 
-    onDone(convId);
+    triggerDone();
     return true;
   } catch (err: unknown) {
-    if (err instanceof Error && err.name === 'AbortError') return true;
+    if ((err instanceof Error && err.name === 'AbortError') || signal?.aborted) {
+      onDone(convId);
+      return true;
+    }
     onError(`Direct API call error: ${err instanceof Error ? err.message : String(err)}`);
     return true;
   }
@@ -290,6 +303,13 @@ export async function streamChat(
   signal?: AbortSignal
 ): Promise<void> {
   let conversationId = req.conversation_id || '';
+  let doneCalled = false;
+  const triggerDone = (cId: string) => {
+    if (!doneCalled) {
+      doneCalled = true;
+      onDone(cId);
+    }
+  };
 
   // Inject API keys from localStorage so the server-side route can proxy calls
   const enrichedReq = { ...req };
@@ -343,6 +363,7 @@ export async function streamChat(
     const decoder = new TextDecoder();
     let buffer = '';
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -375,9 +396,12 @@ export async function streamChat(
         }
       }
     }
-    onDone(conversationId);
+    triggerDone(conversationId);
   } catch (err: unknown) {
-    if (err instanceof Error && err.name === 'AbortError') return;
+    if ((err instanceof Error && err.name === 'AbortError') || signal?.aborted) {
+      triggerDone(conversationId);
+      return;
+    }
     const isHtmlErr = String(err).includes('<!DOCTYPE html>') || String(err).includes('This page could not be found');
     if (isHtmlErr) {
       const handledDirectly = await streamDirectCloud(enrichedReq, onChunk, onMetadata, onDone, onError, signal);

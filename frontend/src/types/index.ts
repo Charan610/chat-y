@@ -30,6 +30,8 @@ export interface Message {
   metadata?: {
     files?: UploadedFile[];
     citations?: Citation[];
+    stopped?: boolean;
+    [key: string]: any;
   };
 }
 
