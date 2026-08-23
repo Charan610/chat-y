@@ -441,6 +441,88 @@ class ProviderRouter:
             }
         return summary
 
+    def get_model_catalog(self) -> list[dict[str, Any]]:
+        """Return catalog of all configured providers and models with API key status."""
+        import os
+
+        catalog = []
+        for provider_name, p_cfg in self.config.providers.items():
+            key_env = p_cfg.api_key_env
+            key_val = os.getenv(key_env) if key_env else None
+            has_key = bool(key_val) if key_env else True  # Local servers don't need keys
+
+            models = []
+            for alias, model_id in p_cfg.models.items():
+                is_active = (alias == self.active_provider.model_alias)
+                in_chain = any(p.model_alias == alias for p in self.chain)
+                models.append({
+                    "alias": alias,
+                    "model_id": model_id,
+                    "is_active": is_active,
+                    "in_chain": in_chain,
+                })
+
+            catalog.append({
+                "provider": provider_name,
+                "base_url": p_cfg.base_url or "(default)",
+                "key_env": key_env,
+                "has_key": has_key,
+                "models": models,
+            })
+        return catalog
+
+    async def test_model(self, model_alias: str) -> dict[str, Any]:
+        """Perform a quick live connectivity test against a specific model."""
+        import time
+
+        try:
+            model_id, provider_config = self.config.resolve_model(model_alias)
+            provider_name = self.config.resolve_provider_for_alias(model_alias)
+            provider = _create_provider(provider_name, model_alias, model_id, provider_config)
+
+            start = time.time()
+            # Send a minimal 1-token test prompt
+            test_msg = [Message(role="user", content="ping")]
+            res = await asyncio.wait_for(provider.complete(test_msg), timeout=10.0)
+            elapsed = time.time() - start
+
+            if res.content or res.tool_calls:
+                return {
+                    "alias": model_alias,
+                    "success": True,
+                    "latency": elapsed,
+                    "message": f"OK ({elapsed:.2f}s)",
+                }
+            return {
+                "alias": model_alias,
+                "success": False,
+                "latency": elapsed,
+                "message": "Empty response received",
+            }
+        except asyncio.TimeoutError:
+            return {
+                "alias": model_alias,
+                "success": False,
+                "latency": 10.0,
+                "message": "Timeout after 10s",
+            }
+        except Exception as e:
+            return {
+                "alias": model_alias,
+                "success": False,
+                "latency": 0.0,
+                "message": self._classify_error(e),
+            }
+
+    async def test_all_models(self) -> list[dict[str, Any]]:
+        """Test live connectivity for all models across all configured providers."""
+        aliases = []
+        for p_cfg in self.config.providers.values():
+            aliases.extend(p_cfg.models.keys())
+
+        tasks = [self.test_model(alias) for alias in aliases]
+        return await asyncio.gather(*tasks)
+
     def save_health(self, path: Path | None = None) -> None:
         """Persist health data to disk."""
         if path is None:

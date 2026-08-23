@@ -295,7 +295,17 @@ class CodeYApp(App):
             stream.log_widget.write("\n".join(lines))
 
         elif command_name == "/model":
-            if arg and self.router:
+            if arg.lower() == "test" and self.router:
+                stream.log_widget.write(f"\n  [{ORANGE}]⚡ Testing live connectivity to all configured models...[/]\n")
+                async def _run_tests():
+                    results = await self.router.test_all_models()
+                    for r in results:
+                        status_glyph = f"[{SUCCESS}]✓[/]" if r["success"] else f"[{ERROR}]✗[/]"
+                        stream.log_widget.write(f"    {status_glyph} [{ORANGE}]{r['alias']:<20}[/] {r['message']}")
+                    stream.log_widget.write("")
+                self.run_worker(_run_tests())
+
+            elif arg and self.router:
                 if self.router.set_override(arg):
                     active = self.router.active_provider
                     stream.log_widget.write(
@@ -308,10 +318,25 @@ class CodeYApp(App):
                         f"\n  [{TEXT_DIM}]Model '{arg}' not found. Available aliases: {available}[/]\n"
                     )
             elif self.router:
-                stream.log_widget.write(
-                    f"\n  Current provider: [{ORANGE}]{self.router.active_provider.display_name()}[/]\n"
-                    f"  Usage: [bold {ORANGE}]/model <alias>[/]\n"
-                )
+                catalog = self.router.get_model_catalog()
+                stream.log_widget.write(f"\n  [bold {ORANGE}]CONFIGURED PROVIDERS & MODELS:[/]\n")
+                for entry in catalog:
+                    p_name = entry["provider"].upper()
+                    if entry["key_env"]:
+                        key_status = f"[{SUCCESS}]✓ Key set ({entry['key_env']})[/]" if entry["has_key"] else f"[{ERROR}]✗ Key missing: export {entry['key_env']}=...[/]"
+                    else:
+                        key_status = f"[{SUCCESS}]✓ Local server[/]"
+
+                    stream.log_widget.write(f"  [bold]{p_name}[/] [dim]({entry['base_url']})[/]  {key_status}")
+                    for m in entry["models"]:
+                        active_badge = f" [bold {ORANGE}]▶ (ACTIVE)[/]" if m["is_active"] else ""
+                        chain_badge = f"[{TEXT_MUTED}]in chain[/]" if m["in_chain"] else ""
+                        stream.log_widget.write(f"    • [{ORANGE}]{m['alias']:<20}[/] [dim]{m['model_id']:<30}[/] {chain_badge}{active_badge}")
+                    stream.log_widget.write("")
+
+                chain_str = " → ".join(p.model_alias for p in self.router.chain)
+                stream.log_widget.write(f"  [dim]Failover Chain:[/] [dim]{chain_str}[/dim]")
+                stream.log_widget.write(f"  [dim]Usage:[/] [{ORANGE}]/model <alias>[/]  |  [{ORANGE}]/model test[/] (live check)\n")
 
         elif command_name == "/verbose":
             self._verbose = not self._verbose

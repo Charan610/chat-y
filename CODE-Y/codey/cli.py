@@ -37,6 +37,8 @@ ORANGE = "#FF5F00"
 BLACK = "#0A0A0B"
 DIM = "#666666"
 WHITE = "#E0E0E0"
+SUCCESS = "#4E9A06"
+ERROR = "#CC0000"
 
 app = typer.Typer(
     name="codey",
@@ -321,20 +323,50 @@ def _handle_slash_command(
         raise KeyboardInterrupt
 
     elif command_name == "/model":
-        if arg and router:
+        if arg.lower() == "test" and router:
+            console.print(f"\n  [bold {ORANGE}]Testing live connectivity to all configured models...[/]\n")
+            import asyncio
+            results = asyncio.run(router.test_all_models())
+            for r in results:
+                status_icon = f"[{SUCCESS}]✓[/]" if r["success"] else f"[{ERROR}]✗[/]"
+                latency_str = f"({r['latency']:.2f}s)" if r["success"] else ""
+                console.print(f"    {status_icon} [{ORANGE}]{r['alias']:<20}[/] {r['message']}")
+            console.print()
+            return True
+
+        elif arg and router:
             if router.set_override(arg):
                 active = router.active_provider
                 agent.provider = active
                 agent.context_manager.set_context_size_for_model(active.model_id)
-                console.print(f"  [{ORANGE}]✓ Switched active provider to {active.display_name()}[/]")
+                console.print(f"\n  [{ORANGE}]✓ Switched active provider to {active.display_name()}[/]\n")
             else:
                 available = ", ".join(p.model_alias for p in router.chain)
                 console.print(f"  [dim]Model '{arg}' not found. Available aliases: {available}[/]")
+            return True
+
         elif router:
+            catalog = router.get_model_catalog()
+            console.print(f"\n  [bold {ORANGE}]AVAILABLE PROVIDERS & MODELS[/]\n")
+
+            for entry in catalog:
+                p_name = entry["provider"].upper()
+                if entry["key_env"]:
+                    key_status = f"[{SUCCESS}]✓ Key set ({entry['key_env']})[/]" if entry["has_key"] else f"[{ERROR}]✗ Key missing: export {entry['key_env']}=...[/]"
+                else:
+                    key_status = f"[{SUCCESS}]✓ Local server (no key needed)[/]"
+
+                console.print(f"  [bold]{p_name}[/] [dim]({entry['base_url']})[/]  {key_status}")
+
+                for m in entry["models"]:
+                    active_badge = f" [bold {ORANGE}]▶ (ACTIVE)[/]" if m["is_active"] else ""
+                    chain_badge = f"[{DIM}]in failover chain[/]" if m["in_chain"] else ""
+                    console.print(f"    • [{ORANGE}]{m['alias']:<20}[/] [dim]{m['model_id']:<32}[/] {chain_badge}{active_badge}")
+                console.print()
+
             chain_str = " → ".join(p.model_alias for p in router.chain)
-            console.print(f"  Current provider: [{ORANGE}]{router.active_provider.display_name()}[/]")
-            console.print(f"  Chain: [dim]{chain_str}[/dim]")
-            console.print(f"  Usage: [bold {ORANGE}]/model <alias>[/]")
+            console.print(f"  [dim]Failover Chain:[/] [dim]{chain_str}[/dim]")
+            console.print(f"  [dim]Usage:[/] [{ORANGE}]/model <alias>[/]  |  [{ORANGE}]/model test[/] (verify live connectivity)\n")
         return True
 
     elif command_name == "/verbose":
@@ -522,6 +554,50 @@ def mcp_add(
         yaml.safe_dump(current_config, f)
 
     console.print(f"[bold {ORANGE}]✓[/] Added MCP server [{ORANGE}]{name}[/] ({command}) to ~/.codey/mcp_config.yaml")
+
+
+@app.command()
+def models(
+    test: bool = typer.Option(False, "--test", "-t", help="Test live API connectivity for all configured models"),
+    project_dir: Optional[str] = typer.Option(None, "--project", "-p", help="Project directory"),
+) -> None:
+    """List configured models, API key configuration status, and verify live connectivity."""
+    project_root = Path(project_dir) if project_dir else Path.cwd()
+    config = load_config(project_root)
+    event_bus = EventBus()
+    router = _setup_router(config, event_bus)
+
+    if test:
+        console.print(f"\n  [bold {ORANGE}]Testing live connectivity to all configured models...[/]\n")
+        import asyncio
+        results = asyncio.run(router.test_all_models())
+        for r in results:
+            status_icon = f"[{SUCCESS}]✓[/]" if r["success"] else f"[{ERROR}]✗[/]"
+            console.print(f"    {status_icon} [{ORANGE}]{r['alias']:<20}[/] {r['message']}")
+        console.print()
+        return
+
+    catalog = router.get_model_catalog()
+    console.print(f"\n  [bold {ORANGE}]AVAILABLE PROVIDERS & MODELS[/]\n")
+
+    for entry in catalog:
+        p_name = entry["provider"].upper()
+        if entry["key_env"]:
+            key_status = f"[{SUCCESS}]✓ Key configured ({entry['key_env']})[/]" if entry["has_key"] else f"[{ERROR}]✗ Missing key: export {entry['key_env']}=...[/]"
+        else:
+            key_status = f"[{SUCCESS}]✓ Local server[/]"
+
+        console.print(f"  [bold]{p_name}[/] [dim]({entry['base_url']})[/]  {key_status}")
+
+        for m in entry["models"]:
+            active_badge = f" [bold {ORANGE}]▶ (ACTIVE)[/]" if m["is_active"] else ""
+            chain_badge = f"[{DIM}]in chain[/]" if m["in_chain"] else ""
+            console.print(f"    • [{ORANGE}]{m['alias']:<20}[/] [dim]{m['model_id']:<32}[/] {chain_badge}{active_badge}")
+        console.print()
+
+    chain_str = " → ".join(p.model_alias for p in router.chain)
+    console.print(f"  [dim]Failover Chain:[/] [dim]{chain_str}[/dim]")
+    console.print(f"  [dim]Tip:[/] Run [bold {ORANGE}]codey models --test[/] to verify API keys and network connectivity.\n")
 
 
 if __name__ == "__main__":
