@@ -115,14 +115,22 @@ export async function streamDirectCloud(
   let provider = 'groq';
   let rawModelId = modelStr;
 
-  if (modelStr.includes('/')) {
+  if (modelStr.startsWith('openrouter/')) {
+    provider = 'openrouter';
+    rawModelId = modelStr.slice('openrouter/'.length);
+  } else if (modelStr.startsWith('deepseek/') || modelStr.startsWith('deepseek-') || modelStr.includes('deepseek')) {
+    provider = 'openrouter';
+    rawModelId = modelStr.startsWith('openrouter/') ? modelStr.slice('openrouter/'.length) : (modelStr.includes('/') ? modelStr : `deepseek/${modelStr}`);
+  } else if (modelStr.includes('/')) {
     const parts = modelStr.split('/');
     provider = parts[0].toLowerCase();
     rawModelId = parts.slice(1).join('/');
-  } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1')) {
+  } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1') || modelStr.startsWith('o3')) {
     provider = 'openai';
   } else if (modelStr.startsWith('claude-')) {
     provider = 'anthropic';
+  } else if (modelStr.startsWith('gemini-') || modelStr.startsWith('gemini/')) {
+    provider = 'google';
   } else if (modelStr.startsWith('llama-') || modelStr.startsWith('mixtral-') || modelStr.startsWith('gemma')) {
     provider = 'groq';
   }
@@ -131,10 +139,11 @@ export async function streamDirectCloud(
   let activeProvider = provider;
 
   if (!apiKey) {
-    if (keys['groq']) { activeProvider = 'groq'; apiKey = keys['groq']; rawModelId = 'llama-3.3-70b-versatile'; }
+    if (keys['openrouter']) { activeProvider = 'openrouter'; apiKey = keys['openrouter']; rawModelId = 'meta-llama/llama-3.3-70b-instruct'; }
+    else if (keys['groq']) { activeProvider = 'groq'; apiKey = keys['groq']; rawModelId = 'llama-3.3-70b-versatile'; }
     else if (keys['openai']) { activeProvider = 'openai'; apiKey = keys['openai']; rawModelId = 'gpt-4o-mini'; }
     else if (keys['nvidia_nim']) { activeProvider = 'nvidia_nim'; apiKey = keys['nvidia_nim']; rawModelId = 'meta/llama-3.1-70b-instruct'; }
-    else if (keys['openrouter']) { activeProvider = 'openrouter'; apiKey = keys['openrouter']; rawModelId = 'meta-llama/llama-3.3-70b-instruct'; }
+    else if (keys['google']) { activeProvider = 'google'; apiKey = keys['google']; rawModelId = 'gemini-1.5-flash'; }
   }
 
   if (!apiKey) {
@@ -150,12 +159,17 @@ export async function streamDirectCloud(
   } else if (activeProvider === 'openai') {
     endpoint = 'https://api.openai.com/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+  } else if (activeProvider === 'google') {
+    endpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+    headers['Authorization'] = `Bearer ${apiKey}`;
   } else if (activeProvider === 'nvidia_nim') {
     endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
   } else if (activeProvider === 'openrouter') {
     endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+    headers['HTTP-Referer'] = 'https://chat-y.local';
+    headers['X-Title'] = 'Chat-Y';
     if (req.web_search && !rawModelId.endsWith(':online')) {
       rawModelId = `${rawModelId}:online`;
     }

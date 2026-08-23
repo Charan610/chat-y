@@ -500,7 +500,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_MESSAGES', payload: [] });
     }
 
-    if (id.startsWith('conv-') || id.startsWith('local-')) {
+    if (id.startsWith('local-')) {
       return;
     }
 
@@ -508,7 +508,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const msgs = await fetchMessages(id);
       if (msgs && msgs.length > 0) {
-        if (cached.length < msgs.length) {
+        if (msgs.length >= cached.length) {
           dispatch({ type: 'SET_MESSAGES', payload: msgs });
           saveMessagesToStorage(id, msgs);
         }

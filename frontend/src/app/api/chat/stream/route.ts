@@ -48,11 +48,17 @@ export async function POST(req: Request) {
     let provider = 'groq';
     let rawModelId = modelStr;
 
-    if (modelStr.includes('/')) {
+    if (modelStr.startsWith('openrouter/')) {
+      provider = 'openrouter';
+      rawModelId = modelStr.slice('openrouter/'.length);
+    } else if (modelStr.startsWith('deepseek/') || modelStr.startsWith('deepseek-') || modelStr.includes('deepseek')) {
+      provider = 'openrouter';
+      rawModelId = modelStr.startsWith('openrouter/') ? modelStr.slice('openrouter/'.length) : (modelStr.includes('/') ? modelStr : `deepseek/${modelStr}`);
+    } else if (modelStr.includes('/')) {
       const parts = modelStr.split('/');
       provider = normalizeProvider(parts[0]);
       rawModelId = parts.slice(1).join('/');
-    } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1')) {
+    } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1') || modelStr.startsWith('o3')) {
       provider = 'openai';
     } else if (modelStr.startsWith('claude-')) {
       provider = 'anthropic';
@@ -68,11 +74,11 @@ export async function POST(req: Request) {
 
     // Fallback to any available key
     if (!apiKey) {
-      if (keys['groq']) { activeProvider = 'groq'; apiKey = keys['groq']; rawModelId = 'llama-3.3-70b-versatile'; }
+      if (keys['openrouter']) { activeProvider = 'openrouter'; apiKey = keys['openrouter']; rawModelId = 'meta-llama/llama-3.3-70b-instruct'; }
+      else if (keys['groq']) { activeProvider = 'groq'; apiKey = keys['groq']; rawModelId = 'llama-3.3-70b-versatile'; }
       else if (keys['openai']) { activeProvider = 'openai'; apiKey = keys['openai']; rawModelId = 'gpt-4o-mini'; }
       else if (keys['google']) { activeProvider = 'google'; apiKey = keys['google']; rawModelId = 'gemini-1.5-flash'; }
       else if (keys['nvidia_nim']) { activeProvider = 'nvidia_nim'; apiKey = keys['nvidia_nim']; rawModelId = 'meta/llama-3.1-70b-instruct'; }
-      else if (keys['openrouter']) { activeProvider = 'openrouter'; apiKey = keys['openrouter']; rawModelId = 'meta-llama/llama-3.3-70b-instruct'; }
       else if (keys['anthropic']) { activeProvider = 'anthropic'; apiKey = keys['anthropic']; rawModelId = 'claude-3-5-haiku-20241022'; }
     }
 
@@ -103,6 +109,8 @@ export async function POST(req: Request) {
     } else if (activeProvider === 'openrouter') {
       endpoint = `${(config?.base_url || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`;
       headers['Authorization'] = `Bearer ${apiKey}`;
+      headers['HTTP-Referer'] = 'https://chat-y.local';
+      headers['X-Title'] = 'Chat-Y';
       if (web_search && !rawModelId.endsWith(':online')) {
         rawModelId = `${rawModelId}:online`;
       }
@@ -167,12 +175,10 @@ export async function POST(req: Request) {
         }
       }
 
-      // Append current user message
+      // Append or update current user message
       const last = anthropicMsgs[anthropicMsgs.length - 1];
       if (last && last.role === 'user') {
-        if (last.content !== currentTurnContent) {
-          last.content = currentTurnContent;
-        }
+        last.content = currentTurnContent;
       } else {
         anthropicMsgs.push({ role: 'user', content: currentTurnContent });
       }
@@ -202,9 +208,11 @@ export async function POST(req: Request) {
         formattedMsgs.push({ role: m.role, content: m.content });
       }
 
-      // Append current user turn if not already the last turn
+      // Append current user turn if not already the last turn or update content
       const lastMsg = formattedMsgs[formattedMsgs.length - 1];
-      if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== currentTurnContent) {
+      if (lastMsg && lastMsg.role === 'user') {
+        lastMsg.content = currentTurnContent;
+      } else {
         formattedMsgs.push({ role: 'user', content: currentTurnContent });
       }
 

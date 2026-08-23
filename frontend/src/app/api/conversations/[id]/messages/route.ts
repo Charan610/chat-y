@@ -1,9 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
 
+  // 1. Try FastAPI backend SQLite
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/conversations/${id}/messages`, {
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return NextResponse.json(data);
+      }
+    }
+  } catch {}
+
+  // 2. Try Prisma PostgreSQL
   try {
     if (prisma && prisma.message) {
       const messages = await prisma.message.findMany({
@@ -11,26 +28,25 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         orderBy: { createdAt: 'asc' },
       });
 
-      const formatted = messages.map((m: any) => ({
-        id: m.id,
-        conversation_id: m.chatId,
-        role: m.role,
-        content: m.content,
-        provider: m.provider || 'cloud',
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0,
-        latency_ms: 0,
-        estimated_cost: 0,
-        created_at: m.createdAt.toISOString(),
-        is_pinned: false,
-      }));
-
-      return NextResponse.json(formatted);
+      if (messages.length > 0) {
+        const formatted = messages.map((m: any) => ({
+          id: m.id,
+          conversation_id: m.chatId,
+          role: m.role,
+          content: m.content,
+          provider: m.provider || 'cloud',
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          total_tokens: 0,
+          latency_ms: 0,
+          estimated_cost: 0,
+          created_at: m.createdAt.toISOString(),
+          is_pinned: false,
+        }));
+        return NextResponse.json(formatted);
+      }
     }
-  } catch (err) {
-    console.warn('Database error fetching messages:', err);
-  }
+  } catch {}
 
   return NextResponse.json([]);
 }
@@ -44,24 +60,44 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const content = body.content || '';
     const provider = body.provider || 'cloud';
 
-    if (prisma && prisma.message) {
-      const created = await prisma.message.create({
-        data: {
-          chatId: id,
+    // 1. Forward to FastAPI backend SQLite
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/conversations/${id}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           role,
           content,
           provider,
-        },
+        }),
       });
+      if (res.ok) {
+        const data = await res.json();
+        return NextResponse.json(data, { status: 201 });
+      }
+    } catch {}
 
-      return NextResponse.json({
-        id: created.id,
-        conversation_id: created.chatId,
-        role: created.role,
-        content: created.content,
-        provider: created.provider,
-        created_at: created.createdAt.toISOString(),
-      }, { status: 201 });
+    // 2. Fallback to Prisma if available
+    if (prisma && prisma.message) {
+      try {
+        const created = await prisma.message.create({
+          data: {
+            chatId: id,
+            role,
+            content,
+            provider,
+          },
+        });
+
+        return NextResponse.json({
+          id: created.id,
+          conversation_id: created.chatId,
+          role: created.role,
+          content: created.content,
+          provider: created.provider,
+          created_at: created.createdAt.toISOString(),
+        }, { status: 201 });
+      } catch {}
     }
   } catch (err) {
     console.warn('Error saving message to database:', err);
