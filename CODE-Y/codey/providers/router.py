@@ -396,36 +396,10 @@ class ProviderRouter:
     def _is_failover_worthy(error: Exception) -> bool:
         """Determine if an error should trigger failover.
 
-        Failover on: connection errors, timeouts, HTTP 429, HTTP 5xx, malformed responses.
-        Do NOT failover on: content-level issues, auth errors (user needs to fix config).
+        Failover on: connection errors, timeouts, HTTP 401/403 (unconfigured/invalid key),
+        HTTP 404 (model not found), HTTP 429 (rate limits), HTTP 5xx, malformed responses.
         """
-        error_str = str(error).lower()
-
-        # Connection errors
-        if isinstance(error, (ConnectionError, OSError)):
-            return True
-        if isinstance(error, asyncio.TimeoutError):
-            return True
-
-        # HTTP status errors
-        if "429" in error_str or "rate limit" in error_str:
-            return True
-        if any(f"{code}" in error_str for code in range(500, 600)):
-            return True
-        if "timeout" in error_str:
-            return True
-        if "connection" in error_str or "connect" in error_str:
-            return True
-
-        # Malformed response
-        if isinstance(error, ValueError) and "malformed" in error_str:
-            return True
-
-        # Auth errors — don't failover (user needs to fix config)
-        if "401" in error_str or "403" in error_str or "unauthorized" in error_str:
-            return False
-
-        # Default: failover on unknown errors (safer)
+        # All provider-level execution exceptions are failover-worthy so the chain continues
         return True
 
     @staticmethod
@@ -437,6 +411,10 @@ class ProviderRouter:
             return "request timed out"
         if "429" in error_str or "rate limit" in error_str:
             return "rate limited (429)"
+        if "401" in error_str or "unauthorized" in error_str or "invalid api key" in error_str or "invalid_api_key" in error_str:
+            return "invalid or missing API key (401)"
+        if "403" in error_str or "forbidden" in error_str:
+            return "access forbidden (403)"
         if "404" in error_str or "not found" in error_str:
             return "model/endpoint not found (404)"
         if "500" in error_str:
@@ -445,12 +423,10 @@ class ProviderRouter:
             return "bad gateway (502)"
         if "503" in error_str:
             return "service unavailable (503)"
-        if "connection" in error_str:
+        if "connection" in error_str or "connect" in error_str:
             return "connection failed"
-        if "401" in error_str or "unauthorized" in error_str:
-            return "authentication failed (401)"
 
-        return f"{type(error).__name__}: {str(error)[:100]}"
+        return f"{type(error).__name__}: {str(error)[:80]}"
 
     def get_health_summary(self) -> dict[str, Any]:
         """Get health summary for all providers (for /context command and persistence)."""

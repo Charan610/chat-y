@@ -7,13 +7,12 @@ filtering, keyboard navigation (Up/Down/Tab/Enter/Escape), and Phosphor Amber st
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
 
 from codey.agent.slash_commands import SlashCommand, SlashCommandRegistry, create_default_registry
-from codey.ui.theme import ORANGE, ORANGE_DIM, PANEL, SURFACE, TEXT, TEXT_DIM, TEXT_MUTED
+from codey.ui.theme import ORANGE, TEXT_DIM, TEXT_MUTED
 
 
 class SlashCommandPalette(Widget):
@@ -44,18 +43,14 @@ class SlashCommandPalette(Widget):
         text-style: bold dim;
         border-bottom: solid #1A1A1D;
         height: 1;
+        width: 100%;
     }
 
-    SlashCommandPalette .palette-row {
-        height: 1;
+    SlashCommandPalette .palette-list {
+        height: auto;
+        width: 100%;
         padding: 0 1;
         color: #E0E0E0;
-    }
-
-    SlashCommandPalette .palette-row.selected {
-        background: #FF5F00;
-        color: #0A0A0B;
-        text-style: bold;
     }
     """
 
@@ -73,15 +68,15 @@ class SlashCommandPalette(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static("  COMMANDS (↑/↓ to navigate, Tab/Enter to select, Esc to close)", classes="palette-header", id="palette-header")
-        yield Vertical(id="palette-items")
+        yield Static("", classes="palette-list", id="palette-list")
 
     def filter_commands(self, query: str) -> bool:
         """Filter commands by query string.
 
         Returns True if palette should be visible (matches found), False otherwise.
         """
-        # If user typed full command + space (e.g. '/model '), close palette
-        if " " in query.strip():
+        # If user typed a space (e.g. after '/model '), close palette
+        if " " in query:
             self.hide()
             return False
 
@@ -150,19 +145,19 @@ class SlashCommandPalette(Widget):
     def _render_items(self) -> None:
         """Render filtered suggestion rows with selection highlight."""
         try:
-            container = self.query_one("#palette-items", Vertical)
-            container.remove_children()
+            list_widget = self.query_one("#palette-list", Static)
+            lines = []
 
             for i, cmd in enumerate(self._filtered_commands):
                 is_selected = i == self.selected_index
-                row_class = "palette-row selected" if is_selected else "palette-row"
-
                 usage_pad = f"{cmd.usage:<18}"
-                if is_selected:
-                    row_text = f"▶ {usage_pad} {cmd.description}"
-                else:
-                    row_text = f"  [{ORANGE}]{usage_pad}[/] [{TEXT_DIM}]{cmd.description}[/]"
 
-                container.mount(Static(row_text, classes=row_class))
+                if is_selected:
+                    # Highlight selected row in Orange background / black text
+                    lines.append(f"[bold on #FF5F00 black]▶ {usage_pad} {cmd.description} [/]")
+                else:
+                    lines.append(f"  [{ORANGE}]{usage_pad}[/] [{TEXT_DIM}]{cmd.description}[/]")
+
+            list_widget.update("\n".join(lines))
         except Exception:
-            pass  # Not mounted yet
+            pass

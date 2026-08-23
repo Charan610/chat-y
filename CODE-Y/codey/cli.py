@@ -355,9 +355,9 @@ def chat(
         None, "--project", "-p", help="Project directory (defaults to CWD)"
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
-    tui: bool = typer.Option(False, "--tui", "-t", help="Launch full Textual TUI instead of plain REPL"),
+    plain: bool = typer.Option(False, "--plain", help="Run in plain console mode instead of full Textual TUI"),
 ) -> None:
-    """Launch the interactive CODE-Y REPL."""
+    """Launch the interactive CODE-Y terminal UI."""
     if verbose:
         logging.basicConfig(level=logging.DEBUG, format="%(name)s: %(message)s")
     else:
@@ -370,7 +370,7 @@ def chat(
 
     config = load_config(project_root)
 
-    if tui:
+    if not plain:
         from codey.ui.app import CodeYApp
         app = CodeYApp(config=config, project_root=project_root)
         app.run()
