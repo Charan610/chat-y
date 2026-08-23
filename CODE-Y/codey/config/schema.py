@@ -8,6 +8,10 @@ from pydantic import BaseModel, Field
 class ProviderConfig(BaseModel):
     """Configuration for a single LLM provider."""
 
+    api_key: str | None = Field(
+        default=None,
+        description="Direct API key string (or loaded from .env).",
+    )
     api_key_env: str | None = Field(
         default=None,
         description="Environment variable name holding the API key.",

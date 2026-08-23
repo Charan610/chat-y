@@ -369,6 +369,42 @@ def _handle_slash_command(
             console.print(f"  [dim]Usage:[/] [{ORANGE}]/model <alias>[/]  |  [{ORANGE}]/model test[/] (verify live connectivity)\n")
         return True
 
+    elif command_name in ("/key", "/api", "/auth"):
+        parts_arg = arg.strip().split(maxsplit=1)
+        if len(parts_arg) == 2:
+            provider_input, key_input = parts_arg[0].lower(), parts_arg[1].strip()
+            env_map = {"groq": "GROQ_API_KEY", "nim": "NVIDIA_API_KEY", "nvidia": "NVIDIA_API_KEY", "gemini": "GEMINI_API_KEY", "google": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY"}
+            env_var = env_map.get(provider_input, f"{provider_input.upper()}_API_KEY")
+
+            from codey.config.loader import GLOBAL_ENV_FILE, ensure_global_config_dir
+            ensure_global_config_dir()
+            lines_env = []
+            found = False
+            if GLOBAL_ENV_FILE.exists():
+                with open(GLOBAL_ENV_FILE, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip().startswith(f"{env_var}="):
+                            lines_env.append(f"{env_var}=\"{key_input}\"\n")
+                            found = True
+                        else:
+                            lines_env.append(line)
+            if not found:
+                lines_env.append(f"{env_var}=\"{key_input}\"\n")
+            with open(GLOBAL_ENV_FILE, "w", encoding="utf-8") as f:
+                f.writelines(lines_env)
+
+            import os
+            os.environ[env_var] = key_input
+            if router:
+                router.set_provider_key(provider_input, key_input)
+
+            masked = key_input[:4] + "..." + key_input[-4:] if len(key_input) > 8 else "***"
+            console.print(f"\n  [bold {SUCCESS}]✓[/] Stored [{ORANGE}]{env_var}[/] ({masked}) in [dim]{GLOBAL_ENV_FILE}[/]")
+            console.print(f"  [dim]Models for {provider_input} are now active. Type /model to view.[/]\n")
+        else:
+            console.print(f"\n  [{ORANGE}]Usage:[/] /key <provider> <api_key>\n  [dim]Examples: /key groq gsk_... | /key nim nvapi-...[/]\n")
+        return True
+
     elif command_name == "/verbose":
         console.print(f"  [dim]Verbose toggle active. Use --verbose on launch or /verbose in TUI.[/]")
         return True

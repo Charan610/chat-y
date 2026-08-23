@@ -45,10 +45,42 @@ class Provider(ABC):
         )
 
     def _resolve_api_key(self) -> str | None:
-        """Resolve the API key from the environment variable in config."""
+        """Resolve the API key from direct config, environment variables, or fallbacks."""
+        # 1. Direct api_key field in config
+        if getattr(self.config, "api_key", None):
+            return self.config.api_key
+
+        # 2. Check specified api_key_env
         if self.config.api_key_env:
-            return os.environ.get(self.config.api_key_env)
+            # If user put the actual key directly in api_key_env
+            if self.config.api_key_env.startswith(("gsk_", "nvapi-", "AIza", "sk-")):
+                return self.config.api_key_env
+            env_val = os.environ.get(self.config.api_key_env)
+            if env_val:
+                return env_val
+
+        # 3. Fallback standard environment variable names
+        fallbacks = [
+            f"{self.name.upper()}_API_KEY",
+            f"{self.model_alias.upper()}_API_KEY",
+            "NVIDIA_API_KEY" if self.name == "nim" else None,
+            "GROQ_API_KEY" if self.name == "groq" else None,
+            "GEMINI_API_KEY" if self.name == "gemini" else None,
+        ]
+        for env_name in filter(None, fallbacks):
+            val = os.environ.get(env_name)
+            if val:
+                return val
+
         return None
+
+    def set_api_key(self, api_key: str) -> None:
+        """Dynamically update client with a new API key."""
+        self.config.api_key = api_key
+        self.client = AsyncOpenAI(
+            api_key=api_key or "not-needed",
+            base_url=self.config.base_url,
+        )
 
     @abstractmethod
     async def complete(

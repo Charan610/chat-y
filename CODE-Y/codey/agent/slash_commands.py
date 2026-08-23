@@ -130,6 +130,13 @@ DEFAULT_SLASH_COMMANDS: list[SlashCommand] = [
         category="Session",
     ),
     SlashCommand(
+        name="/key",
+        usage="/key <provider> <key>",
+        description="Set and save provider API key permanently (e.g. /key groq gsk_...)",
+        category="Config",
+        aliases=["/api", "/auth"],
+    ),
+    SlashCommand(
         name="/help",
         usage="/help",
         description="Show all available slash commands",

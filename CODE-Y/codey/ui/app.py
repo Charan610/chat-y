@@ -340,6 +340,52 @@ class CodeYApp(App):
                 feed.log_widget.write(f"  [dim]Failover Chain:[/] [dim]{chain_str}[/dim]")
                 feed.log_widget.write(f"  [dim]Usage:[/] [{ORANGE}]/model <alias>[/]  |  [{ORANGE}]/model test[/] (live check)\n")
 
+        elif command_name in ("/key", "/api", "/auth"):
+            parts_arg = arg.strip().split(maxsplit=1)
+            if len(parts_arg) == 2:
+                provider_input, key_input = parts_arg[0].lower(), parts_arg[1].strip()
+                env_map = {"groq": "GROQ_API_KEY", "nim": "NVIDIA_API_KEY", "nvidia": "NVIDIA_API_KEY", "gemini": "GEMINI_API_KEY", "google": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY"}
+                env_var = env_map.get(provider_input, f"{provider_input.upper()}_API_KEY")
+
+                # Save to ~/.codey/.env
+                from codey.config.loader import GLOBAL_ENV_FILE, ensure_global_config_dir
+                ensure_global_config_dir()
+                lines_env = []
+                found = False
+                if GLOBAL_ENV_FILE.exists():
+                    with open(GLOBAL_ENV_FILE, "r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip().startswith(f"{env_var}="):
+                                lines_env.append(f"{env_var}=\"{key_input}\"\n")
+                                found = True
+                            else:
+                                lines_env.append(line)
+                if not found:
+                    lines_env.append(f"{env_var}=\"{key_input}\"\n")
+                with open(GLOBAL_ENV_FILE, "w", encoding="utf-8") as f:
+                    f.writelines(lines_env)
+
+                import os
+                os.environ[env_var] = key_input
+
+                # Update live router client
+                if self.router:
+                    self.router.set_provider_key(provider_input, key_input)
+
+                masked = key_input[:4] + "..." + key_input[-4:] if len(key_input) > 8 else "***"
+                feed.log_widget.write(
+                    f"\n  [{SUCCESS}]✓ Saved and activated [{ORANGE}]{env_var}[/] ({masked})![/]\n"
+                    f"  [{TEXT_DIM}]Models for {provider_input} are now ready. Type /model to view or /model test to ping.[/]\n"
+                )
+            else:
+                feed.log_widget.write(
+                    f"\n  [{ORANGE}]Usage:[/] /key <provider> <api_key>\n"
+                    f"  [dim]Examples:[/]\n"
+                    f"    /key groq gsk_...\n"
+                    f"    /key nim nvapi-...\n"
+                    f"    /key gemini AIza...\n"
+                )
+
         elif command_name == "/verbose":
             self._verbose = not self._verbose
             feed.verbose = self._verbose

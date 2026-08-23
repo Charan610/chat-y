@@ -448,8 +448,17 @@ class ProviderRouter:
         catalog = []
         for provider_name, p_cfg in self.config.providers.items():
             key_env = p_cfg.api_key_env
-            key_val = os.getenv(key_env) if key_env else None
-            has_key = bool(key_val) if key_env else True  # Local servers don't need keys
+            # Multi-source key resolution
+            key_val = getattr(p_cfg, "api_key", None)
+            if not key_val and key_env:
+                if key_env.startswith(("gsk_", "nvapi-", "AIza", "sk-")):
+                    key_val = key_env
+                else:
+                    key_val = os.getenv(key_env)
+            if not key_val:
+                key_val = os.getenv(f"{provider_name.upper()}_API_KEY")
+
+            has_key = bool(key_val) if (key_env or provider_name != "local") else True
 
             models = []
             for alias, model_id in p_cfg.models.items():
@@ -465,11 +474,20 @@ class ProviderRouter:
             catalog.append({
                 "provider": provider_name,
                 "base_url": p_cfg.base_url or "(default)",
-                "key_env": key_env,
+                "key_env": key_env or "(none)",
                 "has_key": has_key,
                 "models": models,
             })
         return catalog
+
+    def set_provider_key(self, provider_name: str, api_key: str) -> None:
+        """Update API key across all active provider instances for provider_name."""
+        p_norm = provider_name.lower()
+        if p_norm in self.config.providers:
+            self.config.providers[p_norm].api_key = api_key
+        for p in self.chain:
+            if p.name.lower() == p_norm or p_norm in p.model_alias.lower():
+                p.set_api_key(api_key)
 
     async def test_model(self, model_alias: str) -> dict[str, Any]:
         """Perform a quick live connectivity test against a specific model."""
