@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CODE-Y (FORGE) Universal Installer
-# Works on macOS (Homebrew/PEP 668 compliant) & Linux with zero errors.
+# Automatically handles macOS (Homebrew/PEP 668), Debian/Ubuntu, and standard Linux.
 
 set -e
 
@@ -13,14 +13,12 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 REPO_URL="https://github.com/charan610/chat-y.git"
-INSTALL_DIR="$HOME/.local/share/codey"
-VENV_DIR="$INSTALL_DIR/venv"
-BIN_DIR="$HOME/.local/bin"
+SUBDIR="CODE-Y"
 
 echo -e "\n${BOLD}${ORANGE}⚡ CODE-Y (FORGE) Installer${NC}"
 echo -e "${DIM}Terminal-native, provider-agnostic AI coding agent${NC}\n"
 
-# 1. Check for Python 3.11+
+# ── 1. Check Python version (Python 3.11+ required) ──
 echo -e "Checking Python version..."
 if ! command -v python3 &>/dev/null; then
     echo -e "${RED}Error: Python 3 is not installed.${NC} Please install Python 3.11 or higher."
@@ -37,54 +35,56 @@ if [ "$PY_MAJOR" -lt 3 ] || ([ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 11 ]); t
 fi
 echo -e "${GREEN}✓ Found Python $PY_VER${NC}"
 
-# 2. Setup clean isolated environment (PEP 668 compliant)
-echo -e "Setting up isolated environment in ${DIM}${INSTALL_DIR}${NC}..."
-mkdir -p "$INSTALL_DIR" "$BIN_DIR"
-
-if [ ! -d "$VENV_DIR" ]; then
-    python3 -m venv "$VENV_DIR"
-fi
-
-# Upgrade pip inside the venv (completely isolated, no system conflicts)
-"$VENV_DIR/bin/python" -m pip install --upgrade pip -q
-
-# 3. Install CODE-Y inside the isolated venv
-echo -e "Installing CODE-Y (FORGE) from ${REPO_URL}..."
-"$VENV_DIR/bin/pip" install --force-reinstall -q "git+${REPO_URL}#subdirectory=CODE-Y" || \
-"$VENV_DIR/bin/pip" install --force-reinstall -q "git+${REPO_URL}" || {
-    echo -e "${RED}Failed to install from git repository.${NC}"
-    exit 1
-}
-
-# 4. Link binaries to ~/.local/bin
-ln -sf "$VENV_DIR/bin/codey" "$BIN_DIR/codey"
-ln -sf "$VENV_DIR/bin/forge" "$BIN_DIR/forge"
-chmod +x "$BIN_DIR/codey" "$BIN_DIR/forge" 2>/dev/null || true
-
-echo -e "${GREEN}✓ Binaries linked to ${BIN_DIR}${NC}"
-
-# 5. Ensure PATH includes ~/.local/bin
-CURRENT_SHELL=$(basename "$SHELL")
-SHELL_RC=""
-if [ "$CURRENT_SHELL" = "zsh" ]; then
-    SHELL_RC="$HOME/.zshrc"
-elif [ "$CURRENT_SHELL" = "bash" ]; then
-    if [ -f "$HOME/.bash_profile" ]; then
-        SHELL_RC="$HOME/.bash_profile"
+# ── 2. Ensure pipx is installed (Platform-Aware, PEP 668 compliant) ──
+if command -v pipx &>/dev/null; then
+    echo -e "${GREEN}✓ Found existing pipx installation${NC}"
+else
+    echo -e "pipx not found. Installing pipx..."
+    
+    if [ "$(uname)" = "Darwin" ] && command -v brew &>/dev/null; then
+        echo -e "${DIM}Installing pipx via Homebrew (macOS)...${NC}"
+        brew install pipx
+        "$(brew --prefix)/bin/pipx" ensurepath 2>/dev/null || true
+    elif command -v apt &>/dev/null; then
+        echo -e "${DIM}Installing pipx via apt (Debian/Ubuntu)...${NC}"
+        sudo apt update && sudo apt install -y pipx
+        pipx ensurepath 2>/dev/null || true
     else
-        SHELL_RC="$HOME/.bashrc"
+        echo -e "${DIM}Installing pipx via pip...${NC}"
+        PIP_ERR=$(python3 -m pip install --user pipx 2>&1) || {
+            if echo "$PIP_ERR" | grep -q "externally-managed-environment"; then
+                echo -e "${DIM}PEP 668 detected, retrying with --break-system-packages...${NC}"
+                python3 -m pip install --user --break-system-packages pipx || {
+                    echo -e "${RED}Failed to install pipx:${NC}\n$PIP_ERR"
+                    exit 1
+                }
+            else
+                echo -e "${RED}Failed to install pipx:${NC}\n$PIP_ERR"
+                exit 1
+            fi
+        }
+        python3 -m pipx ensurepath 2>/dev/null || true
     fi
 fi
 
-if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-    export PATH="$BIN_DIR:$PATH"
-    if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
-        if ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$SHELL_RC"; then
-            echo -e '\n# Added by CODE-Y installer\nexport PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_RC"
-            echo -e "${DIM}Added ~/.local/bin to PATH in ${SHELL_RC}${NC}"
-        fi
-    fi
+# ── 3. Configure PATH in the current session ──
+export PATH="$HOME/.local/bin:$PATH"
+
+if [ "$(uname)" = "Darwin" ] && command -v brew &>/dev/null; then
+    export PATH="$(brew --prefix)/bin:$PATH"
 fi
+
+if ! command -v pipx &>/dev/null; then
+    echo -e "${RED}Error: pipx was installed but could not be located in PATH in this session.${NC}"
+    echo -e "Please open a new terminal window or run ${BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC} and re-run the installer."
+    exit 1
+fi
+
+echo -e "${GREEN}✓ pipx is ready${NC}"
+
+# ── 4. Install CODE-Y via pipx from git ──
+echo -e "Installing CODE-Y (FORGE) from ${REPO_URL} (subdirectory: ${SUBDIR})..."
+pipx install "git+${REPO_URL}#subdirectory=${SUBDIR}" --force
 
 echo -e "\n${GREEN}${BOLD}✓ CODE-Y (FORGE) installed successfully!${NC}\n"
 echo -e "${BOLD}Next steps:${NC}"
