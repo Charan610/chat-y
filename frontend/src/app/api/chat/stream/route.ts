@@ -49,10 +49,15 @@ function mapToGroqModel(model: string): string {
 }
 
 function mapToNvidiaModel(model: string): string {
-  let m = model.replace(/^nvidia_nim\//, '').trim();
-  if (m === 'llama-3.3-70b-versatile' || m === 'llama-3.3-70b') return 'meta/llama-3.3-70b-instruct';
-  if (m === 'llama-3.1-8b-instant' || m === 'llama-3.1-8b') return 'meta/llama-3.1-8b-instruct';
+  let m = model.replace(/^nvidia_nim\//, '').replace(/^nvidia\//, '').trim();
+  if (m === 'llama-3.3-70b-versatile' || m === 'llama-3.3-70b' || m === 'llama-3.3-70b-instruct') return 'meta/llama-3.3-70b-instruct';
+  if (m === 'llama-3.1-8b-instant' || m === 'llama-3.1-8b' || m === 'llama-3.1-8b-instruct') return 'meta/llama-3.1-8b-instruct';
+  if (m === 'llama-3.1-70b') return 'meta/llama-3.1-70b-instruct';
   if (m === 'nemotron-3-ultra-550b-a55b') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+  if (m.startsWith('deepseek')) {
+    if (!m.startsWith('deepseek-ai/')) return `deepseek-ai/${m}`;
+    return m;
+  }
   if (!m.includes('/')) {
     if (m.startsWith('llama') || m.startsWith('meta')) return `meta/${m}`;
     return `nvidia/${m}`;
@@ -114,24 +119,30 @@ export async function POST(req: Request) {
     let provider = 'groq';
     let rawModelId = modelStr;
 
-    if (modelStr.startsWith('openrouter/')) {
-      provider = 'openrouter';
-      rawModelId = modelStr.slice('openrouter/'.length);
-    } else if (modelStr.startsWith('deepseek/') || modelStr.startsWith('deepseek-') || modelStr.includes('deepseek')) {
-      provider = 'openrouter';
-      rawModelId = modelStr.startsWith('openrouter/') ? modelStr.slice('openrouter/'.length) : (modelStr.includes('/') ? modelStr : `deepseek/${modelStr}`);
-    } else if (modelStr.includes('/')) {
+    if (modelStr.includes('/')) {
       const parts = modelStr.split('/');
-      provider = normalizeProvider(parts[0]);
-      rawModelId = parts.slice(1).join('/');
+      const prefix = normalizeProvider(parts[0]);
+      if (['groq', 'nvidia_nim', 'google', 'openai', 'anthropic', 'openrouter', 'ollama'].includes(prefix)) {
+        provider = prefix;
+        rawModelId = parts.slice(1).join('/');
+      } else if (parts[0].toLowerCase() === 'deepseek' || parts[0].toLowerCase() === 'meta-llama' || parts[0].toLowerCase() === 'mistralai' || parts[0].toLowerCase() === 'qwen') {
+        provider = 'openrouter';
+        rawModelId = modelStr;
+      } else {
+        provider = prefix;
+        rawModelId = parts.slice(1).join('/');
+      }
     } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1') || modelStr.startsWith('o3')) {
       provider = 'openai';
     } else if (modelStr.startsWith('claude-')) {
       provider = 'anthropic';
-    } else if (modelStr.startsWith('gemini-') || modelStr.startsWith('gemini/')) {
+    } else if (modelStr.startsWith('gemini-')) {
       provider = 'google';
     } else if (modelStr.startsWith('llama-') || modelStr.startsWith('mixtral-') || modelStr.startsWith('gemma')) {
       provider = 'groq';
+    } else if (modelStr.startsWith('deepseek')) {
+      provider = 'openrouter';
+      rawModelId = `deepseek/${modelStr}`;
     }
 
     const config = api_configs?.[provider] || api_configs?.[normalizeProvider(provider)];

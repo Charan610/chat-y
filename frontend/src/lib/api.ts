@@ -115,24 +115,33 @@ export async function streamDirectCloud(
   let provider = 'groq';
   let rawModelId = modelStr;
 
-  if (modelStr.startsWith('openrouter/')) {
-    provider = 'openrouter';
-    rawModelId = modelStr.slice('openrouter/'.length);
-  } else if (modelStr.startsWith('deepseek/') || modelStr.startsWith('deepseek-') || modelStr.includes('deepseek')) {
-    provider = 'openrouter';
-    rawModelId = modelStr.startsWith('openrouter/') ? modelStr.slice('openrouter/'.length) : (modelStr.includes('/') ? modelStr : `deepseek/${modelStr}`);
-  } else if (modelStr.includes('/')) {
+  if (modelStr.includes('/')) {
     const parts = modelStr.split('/');
-    provider = parts[0].toLowerCase();
-    rawModelId = parts.slice(1).join('/');
+    const prefix = parts[0].toLowerCase();
+    if (['groq', 'nvidia_nim', 'nvidia', 'nim', 'google', 'gemini', 'openai', 'anthropic', 'claude', 'openrouter', 'ollama'].includes(prefix)) {
+      if (prefix === 'nvidia' || prefix === 'nim') provider = 'nvidia_nim';
+      else if (prefix === 'gemini') provider = 'google';
+      else if (prefix === 'claude') provider = 'anthropic';
+      else provider = prefix;
+      rawModelId = parts.slice(1).join('/');
+    } else if (parts[0].toLowerCase() === 'deepseek' || parts[0].toLowerCase() === 'meta-llama' || parts[0].toLowerCase() === 'mistralai' || parts[0].toLowerCase() === 'qwen') {
+      provider = 'openrouter';
+      rawModelId = modelStr;
+    } else {
+      provider = prefix;
+      rawModelId = parts.slice(1).join('/');
+    }
   } else if (modelStr.startsWith('gpt-') || modelStr.startsWith('o1') || modelStr.startsWith('o3')) {
     provider = 'openai';
   } else if (modelStr.startsWith('claude-')) {
     provider = 'anthropic';
-  } else if (modelStr.startsWith('gemini-') || modelStr.startsWith('gemini/')) {
+  } else if (modelStr.startsWith('gemini-')) {
     provider = 'google';
   } else if (modelStr.startsWith('llama-') || modelStr.startsWith('mixtral-') || modelStr.startsWith('gemma')) {
     provider = 'groq';
+  } else if (modelStr.startsWith('deepseek')) {
+    provider = 'openrouter';
+    rawModelId = `deepseek/${modelStr}`;
   }
 
   let apiKey = keys[provider];
