@@ -205,7 +205,7 @@ async def _run_repl(config: CodeYConfig, project_root: Path) -> None:
 
             # Handle slash commands
             if user_input.startswith("/"):
-                handled = _handle_slash_command(user_input, agent, config)
+                handled = _handle_slash_command(user_input, agent, config, router)
                 if handled:
                     continue
 
@@ -225,28 +225,35 @@ async def _run_repl(config: CodeYConfig, project_root: Path) -> None:
             break
 
 
-def _handle_slash_command(cmd: str, agent: AgentLoop, config: CodeYConfig) -> bool:
-    """Handle REPL slash commands. Returns True if handled."""
+def _handle_slash_command(
+    cmd: str,
+    agent: AgentLoop,
+    config: CodeYConfig,
+    router: ProviderRouter | None = None,
+) -> bool:
+    """Handle REPL slash commands using the shared SlashCommandRegistry."""
+    from codey.agent.slash_commands import create_default_registry
+
+    registry = create_default_registry()
     parts = cmd.strip().split(maxsplit=1)
-    command = parts[0].lower()
+    command_name = parts[0].lower()
     arg = parts[1] if len(parts) > 1 else ""
 
-    if command == "/help":
+    if command_name in ("/help", "/?"):
+        commands = registry.list_commands()
+        help_lines = []
+        for c in commands:
+            help_lines.append(f"[bold {ORANGE}]{c.usage:<18}[/] — {c.description}")
         console.print(
             Panel(
-                f"[bold {ORANGE}]/model <name>[/]   — switch provider/model\n"
-                f"[bold {ORANGE}]/verbose[/]        — toggle verbose output\n"
-                f"[bold {ORANGE}]/context[/]        — show context window usage\n"
-                f"[bold {ORANGE}]/tools[/]          — list available tools\n"
-                f"[bold {ORANGE}]/clear[/]          — clear conversation history\n"
-                f"[bold {ORANGE}]/exit[/]           — exit CODE-Y",
+                "\n".join(help_lines),
                 title="Commands",
                 border_style=ORANGE,
             )
         )
         return True
 
-    elif command == "/context":
+    elif command_name == "/context":
         usage = agent.context_manager.get_usage(agent.conversation)
         approx = "≈" if usage["approximate"] else ""
         pct = usage["percent"]
@@ -261,39 +268,79 @@ def _handle_slash_command(cmd: str, agent: AgentLoop, config: CodeYConfig) -> bo
         console.print(f"  Messages: {len(agent.conversation)}")
         return True
 
-    elif command == "/tools":
+    elif command_name == "/tools":
         tools = agent.tool_registry.list_tools()
         console.print(f"  [{ORANGE}]Available tools ({len(tools)}):[/]")
-        for name in tools:
+        for name in sorted(tools):
             tool = agent.tool_registry.get_tool(name)
-            confirm = " [dim](requires confirmation)[/]" if tool and tool.requires_confirmation else ""
-            console.print(f"    • {name}{confirm}")
+            desc = f" — {tool.description[:60]}" if tool else ""
+            console.print(f"    • [{ORANGE}]{name:<18}[/] [{DIM}]{desc}[/]")
         return True
 
-    elif command == "/clear":
+    elif command_name == "/mcp":
+        from codey.mcp.client_manager import GLOBAL_MCP_CONFIG
+        import yaml
+        if GLOBAL_MCP_CONFIG.exists():
+            with open(GLOBAL_MCP_CONFIG) as f:
+                data = yaml.safe_load(f) or {}
+            servers = data.get("mcpServers", {})
+            if servers:
+                console.print(f"  [{ORANGE}]Configured MCP Servers ({len(servers)}):[/]")
+                for name, s_cfg in servers.items():
+                    cmd = s_cfg.get("command") or s_cfg.get("url", "unknown")
+                    console.print(f"    • [{ORANGE}]{name}[/] ({cmd})")
+            else:
+                console.print(f"  [dim]No MCP servers configured in ~/.codey/mcp_config.yaml[/]")
+        else:
+            console.print(f"  [dim]No MCP servers configured in ~/.codey/mcp_config.yaml[/]")
+        return True
+
+    elif command_name == "/plugins":
+        from codey.plugins.plugin_loader import PLUGINS_DIR
+        if PLUGINS_DIR.exists():
+            plugins = [d.name for d in PLUGINS_DIR.iterdir() if d.is_dir()]
+            if plugins:
+                console.print(f"  [{ORANGE}]Installed Plugins ({len(plugins)}):[/]")
+                for p in plugins:
+                    console.print(f"    • [{ORANGE}]{p}[/]")
+            else:
+                console.print(f"  [dim]No plugins found in ~/.codey/plugins/[/]")
+        else:
+            console.print(f"  [dim]No plugins directory found at ~/.codey/plugins/[/]")
+        return True
+
+    elif command_name == "/clear":
         agent.conversation.clear()
         agent._initialized = False
         agent.initialize()
-        console.print(f"  [{ORANGE}]Conversation cleared.[/]")
+        console.print(f"  [{ORANGE}]✓ Conversation cleared.[/]")
         return True
 
-    elif command in ("/exit", "/quit"):
+    elif command_name in ("/exit", "/quit"):
         raise KeyboardInterrupt
 
-    elif command == "/model":
-        if not arg:
-            console.print(f"  [dim]Current:[/] [{ORANGE}]{agent.provider.display_name()}[/]")
-            console.print(f"  [dim]Usage: /model <alias>[/]")
-        else:
-            console.print(f"  [dim]Model switching available in Phase 2 (router)[/]")
+    elif command_name == "/model":
+        if arg and router:
+            if router.set_override(arg):
+                active = router.active_provider
+                agent.provider = active
+                agent.context_manager.set_context_size_for_model(active.model_id)
+                console.print(f"  [{ORANGE}]✓ Switched active provider to {active.display_name()}[/]")
+            else:
+                available = ", ".join(p.model_alias for p in router.chain)
+                console.print(f"  [dim]Model '{arg}' not found. Available aliases: {available}[/]")
+        elif router:
+            console.print(f"  Current provider: [{ORANGE}]{router.active_provider.display_name()}[/]")
+            console.print(f"  Chain: [{' → '.join(p.model_alias for p in router.chain)}]")
+            console.print(f"  Usage: [bold {ORANGE}]/model <alias>[/]")
         return True
 
-    elif command == "/verbose":
-        console.print(f"  [dim]Verbose mode toggle available in Phase 4 (TUI)[/]")
+    elif command_name == "/verbose":
+        console.print(f"  [dim]Verbose toggle active. Use --verbose on launch or /verbose in TUI.[/]")
         return True
 
     else:
-        console.print(f"  [dim]Unknown command: {command}. Type /help for available commands.[/]")
+        console.print(f"  [dim]Unknown command: {command_name}. Type /help for available commands.[/]")
         return True
 
 
