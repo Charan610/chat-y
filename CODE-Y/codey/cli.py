@@ -556,6 +556,82 @@ def mcp_add(
     console.print(f"[bold {ORANGE}]✓[/] Added MCP server [{ORANGE}]{name}[/] ({command}) to ~/.codey/mcp_config.yaml")
 
 
+# ── Auth / API Key subcommands ──
+auth_app = typer.Typer(name="auth", help="Manage LLM provider API keys")
+app.add_typer(auth_app, name="auth")
+
+PROVIDER_ENV_MAP = {
+    "groq": "GROQ_API_KEY",
+    "nim": "NVIDIA_API_KEY",
+    "nvidia": "NVIDIA_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "google": "GEMINI_API_KEY",
+    "openai": "OPENAI_API_KEY",
+}
+
+
+@auth_app.command("set")
+def auth_set(
+    provider: str = typer.Argument(..., help="Provider name (groq, nim, gemini, etc.)"),
+    api_key: str = typer.Argument(..., help="Your API key string"),
+) -> None:
+    """Set and store an API key permanently in ~/.codey/.env."""
+    from codey.config.loader import GLOBAL_ENV_FILE, ensure_global_config_dir
+
+    p_norm = provider.lower().strip()
+    env_var = PROVIDER_ENV_MAP.get(p_norm, f"{p_norm.upper()}_API_KEY")
+
+    ensure_global_config_dir()
+    lines = []
+    found = False
+
+    if GLOBAL_ENV_FILE.exists():
+        with open(GLOBAL_ENV_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip().startswith(f"{env_var}="):
+                    lines.append(f"{env_var}=\"{api_key}\"\n")
+                    found = True
+                else:
+                    lines.append(line)
+
+    if not found:
+        lines.append(f"{env_var}=\"{api_key}\"\n")
+
+    with open(GLOBAL_ENV_FILE, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+    # Also update current process env
+    import os
+    os.environ[env_var] = api_key
+
+    masked = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
+    console.print(f"\n[bold {SUCCESS}]✓[/] Stored [{ORANGE}]{env_var}[/] ({masked}) in [dim]{GLOBAL_ENV_FILE}[/]")
+    console.print(f"  [dim]Run [bold {ORANGE}]codey models --test[/] to verify API connectivity.[/]\n")
+
+
+@auth_app.command("list")
+def auth_list() -> None:
+    """List configured provider API keys."""
+    import os
+    from codey.config.loader import load_config
+    config = load_config()
+
+    console.print(f"\n[bold {ORANGE}]CONFIGURED API KEYS[/]\n")
+    for p_name, p_cfg in config.providers.items():
+        key_env = p_cfg.api_key_env
+        if not key_env:
+            console.print(f"  • [{ORANGE}]{p_name:<10}[/] Local server (no key needed)")
+            continue
+
+        val = os.getenv(key_env)
+        if val:
+            masked = val[:4] + "..." + val[-4:] if len(val) > 8 else "***"
+            console.print(f"  • [{ORANGE}]{p_name:<10}[/] [{SUCCESS}]✓ Configured[/] ({key_env}={masked})")
+        else:
+            console.print(f"  • [{ORANGE}]{p_name:<10}[/] [{ERROR}]✗ Missing[/] (export {key_env}=... or codey auth set {p_name} <key>)")
+    console.print()
+
+
 @app.command()
 def models(
     test: bool = typer.Option(False, "--test", "-t", help="Test live API connectivity for all configured models"),

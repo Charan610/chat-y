@@ -13,8 +13,29 @@ from codey.config.schema import CodeYConfig
 # Sentinel paths
 GLOBAL_CONFIG_DIR = Path.home() / ".codey"
 GLOBAL_CONFIG_FILE = GLOBAL_CONFIG_DIR / "config.yaml"
+GLOBAL_ENV_FILE = GLOBAL_CONFIG_DIR / ".env"
 PROJECT_CONFIG_FILE = ".codey.yaml"
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "default_config.yaml"
+
+
+def _load_env_file(path: Path) -> None:
+    """Load key-value pairs from a .env file into os.environ if not already set."""
+    if not path.exists():
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                if key:
+                    # Update environment
+                    os.environ[key] = val
+    except Exception:
+        pass
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -45,12 +66,20 @@ def load_config(project_dir: Path | None = None) -> CodeYConfig:
     """Load and validate the CODE-Y configuration.
 
     Merge order (later overrides earlier):
+      0. Global and local .env files (into os.environ)
       1. Embedded default_config.yaml
       2. ~/.codey/config.yaml      (global user overrides)
       3. <project>/.codey.yaml     (project-level overrides)
 
     Returns a validated CodeYConfig instance.
     """
+    # 0. Load env files
+    _load_env_file(GLOBAL_ENV_FILE)
+    if project_dir is not None:
+        _load_env_file(project_dir / ".env")
+    else:
+        _load_env_file(Path.cwd() / ".env")
+
     # 1. Embedded defaults
     defaults = _load_yaml(DEFAULT_CONFIG_PATH)
 
