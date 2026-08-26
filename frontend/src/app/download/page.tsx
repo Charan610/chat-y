@@ -27,7 +27,7 @@ export default function DownloadPage() {
   const installUrl =
     process.env.NEXT_PUBLIC_ANDROID_INSTALL_URL || '/chat-y.apk';
   const sha256Checksum =
-    '410d06bb02bbef7d935782017d9ee8505f52866a600b1f5f39b4fe6e1ca6919e';
+    '287b0be73d88fb809159f279fb6e996b6a5db27fd9230138ef2892759d3beaee';
   const repoUrl = 'https://github.com/Charan610/chat-y';
 
   const handleCopySha = () => {
